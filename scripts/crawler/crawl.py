@@ -174,11 +174,13 @@ def main():
     ap.add_argument('--delay', type=float, default=0.35, help='min seconds between requests')
     ap.add_argument('--workers', type=int, default=4)
     ap.add_argument('--limit', type=int, default=0, help='max products (0 = all)')
+    ap.add_argument('--no-fetch', action='store_true', help='only write the output from already cached products')
     args = ap.parse_args()
 
     WORK.mkdir(exist_ok=True)
     rp = RobotFileParser(BASE + '/robots.txt')
-    rp.read()
+    if not args.no_fetch:
+        rp.read()
 
     listing_file = WORK / 'listing.json'
     if listing_file.exists():
@@ -195,7 +197,7 @@ def main():
             print(f'  {c}: {len(got)} products (total {len(listing)})', flush=True)
         listing_file.write_text(json.dumps(listing))
 
-    urls = [u for u in listing if rp.can_fetch(UA, u)]
+    urls = list(listing) if args.no_fetch else [u for u in listing if rp.can_fetch(UA, u)]
     if args.limit:
         urls = urls[: args.limit]
 
@@ -208,7 +210,7 @@ def main():
                 done[d['url']] = d
             except (json.JSONDecodeError, KeyError):
                 pass
-    todo = [u for u in urls if u not in done]
+    todo = [] if args.no_fetch else [u for u in urls if u not in done]
     print(f'{len(urls)} products, {len(done)} cached, {len(todo)} to fetch', flush=True)
 
     def work(u):

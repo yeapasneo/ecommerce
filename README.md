@@ -88,6 +88,22 @@ Change these passwords, or remove these accounts, before going live.
 ### Demo data
 The seeder creates about 110 products in about 45 categories and 30 brands, with specifications. It also creates generated SVG product and banner images, two coupons (`WELCOME500` and `SAVE5`), offers, pages, reviews, questions and sample orders.
 
+## Imported catalog
+
+`php artisan db:seed` loads `database/data/catalog.json.gz` when it exists (about 16,700 real products, 298 categories and 504 brands). Without that file it falls back to a small demo catalog. A full fresh seed takes about 80 seconds.
+
+The file is built by a Python crawler that collects only facts: names, product codes, prices, stock status, short key features, spec tables, categories and brands. It does not copy product photos or description text. Every product gets a generated placeholder image instead; upload real images from the admin panel.
+
+To refresh or finish the crawl (it resumes from `scripts/crawler/.cache`):
+
+```bash
+pip install requests beautifulsoup4
+python3 scripts/crawler/crawl.py --out database/data/catalog.json.gz
+php artisan migrate:fresh --seed
+```
+
+Use `--no-fetch` to rebuild the file from the cache without network requests, and `--limit N` for a quick partial crawl.
+
 ## Tests
 
 The feature tests run against a PostgreSQL database named `ecommerce_test` (see `phpunit.xml`):

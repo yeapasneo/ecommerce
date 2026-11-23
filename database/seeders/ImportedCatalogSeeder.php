@@ -158,13 +158,15 @@ class ImportedCatalogSeeder extends Seeder
     {
         $raw = mb_strtolower($raw);
 
-        return match (true) {
-            ! $price => 'up_coming',
+        $status = match (true) {
             str_contains($raw, 'in stock') => 'in_stock',
             str_contains($raw, 'pre') => 'pre_order',
             str_contains($raw, 'up coming'), str_contains($raw, 'upcoming') => 'up_coming',
-            default => 'out_of_stock',
+            default => 'out_of_stock', // out of stock, sold out, call for price
         };
+
+        // Never let a product be bought at ৳0: purchasable statuses need a price.
+        return ! $price && in_array($status, ['in_stock', 'pre_order'], true) ? 'up_coming' : $status;
     }
 
     protected function warrantyMonths(array $specs): ?int
@@ -250,7 +252,7 @@ class ImportedCatalogSeeder extends Seeder
     {
         $map = [
             ['CPU', ['processor'], true, 'core'], ['CPU Cooler', ['cpu cooler', 'cooler'], false, 'core'],
-            ['Motherboard', ['motherboard'], true, 'core'], ['RAM', ['desktop ram', 'ram'], true, 'core'],
+            ['Motherboard', ['motherboard'], true, 'core'], ['RAM', ['ram (desktop)', 'desktop ram', 'ram'], true, 'core'],
             ['Storage', ['ssd', 'hard disk', 'hdd'], true, 'core'], ['Graphics Card', ['graphics card'], false, 'core'],
             ['Power Supply', ['power supply'], true, 'core'], ['Casing', ['casing'], true, 'core'],
             ['Monitor', ['monitor'], false, 'peripherals'], ['Keyboard', ['keyboard'], false, 'peripherals'],
