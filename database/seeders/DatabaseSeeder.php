@@ -23,6 +23,8 @@ class DatabaseSeeder extends Seeder
             'password' => 'password',
         ]);
 
-        $this->call([CatalogSeeder::class, ContentSeeder::class]);
+        // Use the crawled real-world catalog when present, otherwise the small demo catalog.
+        $this->call(is_file(database_path(ImportedCatalogSeeder::FILE)) ? ImportedCatalogSeeder::class : CatalogSeeder::class);
+        $this->call(ContentSeeder::class);
     }
 }

@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Banner;
+use App\Models\Category;
 use App\Models\Coupon;
 use App\Models\Offer;
 use App\Models\Order;
@@ -22,9 +23,9 @@ class ContentSeeder extends Seeder
         Storage::disk('public')->makeDirectory('banners');
         $banners = [
             ['Build Your Dream PC', 'Pick every part with our PC Builder and get it assembled for free', '/pc-builder', 'slider', '#0f3d5c', '#f97316'],
-            ['Gaming Laptops Mega Sale', 'Save up to 12% on RTX 40 series gaming laptops', '/category/gaming-laptop', 'slider', '#3b1f5c', '#22d3ee'],
-            ['Upgrade to 4K', 'Crisp, colourful monitors for work and play', '/category/monitor', 'slider', '#1f5c3d', '#facc15'],
-            ['Smartphone Deals', 'Latest flagships with official warranty', '/category/smartphone', 'side', '#5c1f2e', '#fde68a'],
+            ['Gaming Laptops Mega Sale', 'Save up to 12% on RTX 40 series gaming laptops', $this->categoryLink(['Gaming Laptop', 'Laptop']), 'slider', '#3b1f5c', '#22d3ee'],
+            ['Upgrade to 4K', 'Crisp, colourful monitors for work and play', $this->categoryLink(['Monitor']), 'slider', '#1f5c3d', '#facc15'],
+            ['Smartphone Deals', 'Latest flagships with official warranty', $this->categoryLink(['Smartphone', 'Phone']), 'side', '#5c1f2e', '#fde68a'],
             ['Use code WELCOME500', '৳500 off on your first order above ৳10,000', '/offers', 'side', '#1f2f5c', '#86efac'],
         ];
         foreach ($banners as $i => [$title, $subtitle, $link, $pos, $bg, $accent]) {
@@ -39,9 +40,9 @@ class ContentSeeder extends Seeder
         Coupon::updateOrCreate(['code' => 'SAVE5'], ['type' => 'percent', 'value' => 5, 'min_order' => 5000, 'max_discount' => 3000, 'is_active' => true]);
 
         $offers = [
-            ['Winter Gaming Fest', 'Up to 12% discount on gaming laptops, graphics cards and accessories. Limited stock available.', '/category/gaming'],
+            ['Winter Gaming Fest', 'Up to 12% discount on gaming laptops, graphics cards and accessories. Limited stock available.', $this->categoryLink(['Gaming'])],
             ['Free Assembly on PC Builds', 'Build your PC with our PC Builder and we will assemble and test it for free.', '/pc-builder'],
-            ['Student Laptop Week', 'Special prices on student laptops with free laptop bag.', '/category/student-laptop'],
+            ['Student Laptop Week', 'Special prices on student laptops with free laptop bag.', $this->categoryLink(['Student Laptop', 'Laptop'])],
         ];
         foreach ($offers as $i => [$title, $desc, $link]) {
             Offer::updateOrCreate(['slug' => Str::slug($title)], [
@@ -101,6 +102,18 @@ class ContentSeeder extends Seeder
                     'answer' => $i < 4 ? 'Yes, it comes with official brand warranty.' : null, 'answered_at' => $i < 4 ? now() : null]);
             }
         }
+    }
+
+    /** Link to the first existing category by name, so content works with any catalog. */
+    protected function categoryLink(array $names): string
+    {
+        foreach ($names as $name) {
+            if ($slug = Category::whereRaw('lower(name) = ?', [mb_strtolower($name)])->orderBy('parent_id')->value('slug')) {
+                return '/category/'.$slug;
+            }
+        }
+
+        return '/search';
     }
 
     protected function bannerSvg(string $title, string $subtitle, string $bg, string $accent, bool $side): string
