@@ -1,0 +1,48 @@
+@import 'tailwindcss';
+
+@source '../js/**/*.jsx';
+
+@theme {
+    --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+    --color-brand-50: #eef6fb;
+    --color-brand-100: #d5e9f5;
+    --color-brand-500: #1f6f9f;
+    --color-brand-600: #17587f;
+    --color-brand-700: #0f3d5c;
+    --color-brand-900: #0a2233;
+    --color-accent-400: #fb923c;
+    --color-accent-500: #f97316;
+    --color-accent-600: #ea580c;
+}
+
+@layer base {
+    body { @apply bg-slate-100 text-slate-800; }
+    input, select, textarea { @apply outline-none; }
+}
+
+@utility container-x { @apply mx-auto w-full max-w-7xl px-4; }
+@utility card { @apply rounded-lg bg-white shadow-sm ring-1 ring-slate-200; }
+@utility btn { @apply inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50; }
+@utility btn-primary { @apply btn bg-brand-700 text-white hover:bg-brand-600; }
+@utility btn-accent { @apply btn bg-accent-500 text-white hover:bg-accent-600; }
+@utility btn-outline { @apply btn border border-slate-300 bg-white text-slate-700 hover:border-brand-500 hover:text-brand-600; }
+@utility btn-danger { @apply btn bg-red-600 text-white hover:bg-red-700; }
+@utility btn-sm { @apply px-2.5 py-1 text-xs; }
+@utility input { @apply w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:border-brand-500 focus:ring-2 focus:ring-brand-100; }
+@utility label { @apply mb-1 block text-sm font-medium text-slate-700; }
+@utility badge { @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold; }
+@utility prose-content {
+    & p { @apply mb-3 leading-relaxed; }
+    & h2, & h3 { @apply mb-2 mt-4 font-semibold; }
+    & ul { @apply mb-3 list-disc pl-5; }
+}
+@utility table-x {
+    @apply w-full text-left text-sm;
+    & th { @apply border-b border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500; }
+    & td { @apply border-b border-slate-100 px-3 py-2 align-middle; }
+}
+
+@media print {
+    .no-print { display: none !important; }
+    body { background: #fff; }
+}
