@@ -67,6 +67,23 @@ class Setting extends Model
         'eps_username' => '',
         'eps_password' => '',
         'eps_hash_key' => '',
+
+        // Couriers
+        'courier_sync_status' => '1',
+        'steadfast_enabled' => '0',
+        'steadfast_api_key' => '',
+        'steadfast_secret_key' => '',
+        'steadfast_webhook_token' => '',
+        'pathao_enabled' => '0',
+        'pathao_sandbox' => '1',
+        'pathao_client_id' => '',
+        'pathao_client_secret' => '',
+        'pathao_username' => '',
+        'pathao_password' => '',
+        'pathao_store_id' => '',
+        'pathao_delivery_type' => '48',
+        'pathao_item_weight' => '0.5',
+        'pathao_webhook_secret' => '',
     ];
 
     /** Stored encrypted and never sent to the browser (the admin form only sees whether they are set). */
@@ -75,6 +92,8 @@ class Setting extends Model
         'nagad_private_key',
         'sslcommerz_store_password',
         'eps_password', 'eps_hash_key',
+        'steadfast_api_key', 'steadfast_secret_key',
+        'pathao_client_secret', 'pathao_password',
     ];
 
     /** The only settings shared with every page (storefront and admin). */

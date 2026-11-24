@@ -10,6 +10,7 @@ const TABS = [
     { value: 'seo', label: 'SEO' },
     { value: 'tracking', label: 'Tracking' },
     { value: 'payments', label: 'Payments' },
+    { value: 'couriers', label: 'Couriers' },
 ];
 
 const GATEWAYS = [
@@ -65,7 +66,33 @@ function Copy({ label, value }) {
     );
 }
 
-export default function Settings({ values, secretsSet, gateways, urls, ogImageUrl }) {
+function TestConnection({ courier, onStores }) {
+    const [state, setState] = useState(null);
+    const run = async () => {
+        setState({ loading: true });
+        try {
+            const res = await fetch(`/admin/couriers/${courier}/test`, {
+                method: 'POST',
+                headers: { Accept: 'application/json', 'X-XSRF-TOKEN': decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] ?? '') },
+            });
+            const body = await res.json().catch(() => ({}));
+            setState({ ok: res.ok && body.ok, message: body.message ?? 'No answer from the courier.' });
+            if (body.stores && onStores) onStores(body.stores);
+        } catch {
+            setState({ ok: false, message: 'Could not reach the server.' });
+        }
+    };
+    return (
+        <div className="flex flex-wrap items-center gap-3">
+            <button type="button" onClick={run} disabled={state?.loading} className="btn-outline"><Icon name="refresh" className="h-4 w-4" /> {state?.loading ? 'Testing…' : 'Test connection'}</button>
+            {state && !state.loading && <span className={`text-sm ${state.ok ? 'text-green-700' : 'text-red-600'}`} role="status">{state.message}</span>}
+            {!state && <span className="text-xs text-slate-500">Uses the saved credentials. Save first.</span>}
+        </div>
+    );
+}
+
+export default function Settings({ values, secretsSet, gateways, couriers, urls, ogImageUrl }) {
+    const [pathaoStores, setPathaoStores] = useState(null);
     const initial = useMemo(() => ({ ...values, seo_og_image: null, seo_og_image_remove: false }), [values]);
     const form = useForm(initial);
     const [tab, setTab] = useState(() => (typeof window !== 'undefined' && TABS.some((t) => `#${t.value}` === window.location.hash) ? window.location.hash.slice(1) : 'general'));
@@ -74,6 +101,13 @@ export default function Settings({ values, secretsSet, gateways, urls, ogImageUr
     const e = form.errors;
     const set = (k) => (ev) => form.setData(k, ev.target.value);
     const text = (k, label, props = {}) => <TextInput label={label} value={form.data[k] ?? ''} onChange={set(k)} error={e[k]} {...props} />;
+    const secret = (k, label) => (
+        <TextInput label={label} type="password" autoComplete="off" value={form.data[k] ?? ''} onChange={set(k)} error={e[k]} placeholder={secretsSet[k] ? '•••••••• saved — leave blank to keep' : ''} />
+    );
+    const courierBadge = (k) => {
+        const st = couriers[k];
+        return <span className={`badge shrink-0 rounded-md ring-1 ring-inset ring-current/20 ${st.live ? 'bg-green-50 text-green-700' : st.configured ? 'bg-slate-100 text-slate-600' : 'bg-amber-50 text-amber-700'}`}>{st.live ? 'On' : st.configured ? 'Off' : 'Not set up'}</span>;
+    };
     const toggle = (k, label, description) => <Toggle label={label} description={description} checked={flag(form.data[k])} onChange={(v) => form.setData(k, v ? '1' : '0')} />;
 
     // Jump to the tab holding the first error.
@@ -81,7 +115,7 @@ export default function Settings({ values, secretsSet, gateways, urls, ogImageUr
         const keys = Object.keys(e);
         if (!keys.length) return;
         const k = keys[0];
-        const where = /^(bkash|nagad|sslcommerz|eps|cod)_/.test(k) ? 'payments' : /^(seo_|google_|bing_|facebook_domain)/.test(k) ? 'seo' : /(pixel|gtm|ga_)/.test(k) ? 'tracking' : 'general';
+        const where = /^(steadfast|pathao|courier)_/.test(k) ? 'couriers' : /^(bkash|nagad|sslcommerz|eps|cod)_/.test(k) ? 'payments' : /^(seo_|google_|bing_|facebook_domain)/.test(k) ? 'seo' : /(pixel|gtm|ga_)/.test(k) ? 'tracking' : 'general';
         setTab(where);
     }, [e]);
 
@@ -101,7 +135,7 @@ export default function Settings({ values, secretsSet, gateways, urls, ogImageUr
     return (
         <AdminLayout
             title="Store Settings"
-            subtitle="Store details, SEO, tracking and payment gateways"
+            subtitle="Store details, SEO, tracking, payments and couriers"
             actions={
                 <>
                     <button type="button" onClick={() => form.reset()} disabled={!form.isDirty} className="btn-cancel rounded-lg"><Icon name="x" className="h-4 w-4" /> Discard</button>
@@ -267,6 +301,95 @@ export default function Settings({ values, secretsSet, gateways, urls, ogImageUr
                             })}
                         </div>
                         <p className="flex items-start gap-2 text-sm text-slate-500"><Icon name="shield" className="mt-0.5 h-4 w-4 shrink-0" /> Secret keys and passwords are stored encrypted and never shown again. Orders are only marked paid after the payment is confirmed directly with the gateway. Test each gateway in sandbox mode before going live.</p>
+                    </div>
+                )}
+
+                {tab === 'couriers' && (
+                    <div className="space-y-6">
+                        <Panel title="Delivery Updates" icon="truck" collapsible={false}>
+                            {toggle('courier_sync_status', 'Update orders from the courier', 'When the courier marks a parcel delivered, the order becomes Delivered (cash-on-delivery orders are marked paid). Every courier update is added to the order history either way.')}
+                        </Panel>
+                        <div className="grid items-start gap-6 xl:grid-cols-2">
+                            <section className="panel">
+                                <div className="flex items-center gap-3 border-b border-slate-100 px-6 py-4">
+                                    <span className="grid h-10 w-10 place-items-center rounded-xl bg-emerald-50 text-sm font-black text-emerald-700">St</span>
+                                    <div className="mr-auto">
+                                        <h2 className="text-lg font-semibold text-slate-900">Steadfast</h2>
+                                        <p className="text-xs text-slate-500">API keys are in the Steadfast merchant panel under API.</p>
+                                    </div>
+                                    {courierBadge('steadfast')}
+                                </div>
+                                <div className="space-y-5 px-6 py-5">
+                                    {toggle('steadfast_enabled', 'Use Steadfast for deliveries')}
+                                    {e.steadfast_enabled && <p className="-mt-3 text-xs text-red-600">{e.steadfast_enabled}</p>}
+                                    <div className="grid gap-4 sm:grid-cols-2">
+                                        {secret('steadfast_api_key', 'API Key')}
+                                        {secret('steadfast_secret_key', 'Secret Key')}
+                                    </div>
+                                    <TestConnection courier="steadfast" />
+                                    <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+                                        <p className="text-sm font-medium text-slate-900">Status webhook</p>
+                                        <p className="text-xs text-slate-500">In the Steadfast panel, set the callback URL below and the auth token as the Bearer token. Steadfast then pushes every status change here.</p>
+                                        <Copy label="Callback URL" value={urls.steadfastWebhook} />
+                                        <Copy label="Auth token (Bearer)" value={form.data.steadfast_webhook_token ?? ''} />
+                                    </div>
+                                </div>
+                            </section>
+
+                            <section className="panel">
+                                <div className="flex items-center gap-3 border-b border-slate-100 px-6 py-4">
+                                    <span className="grid h-10 w-10 place-items-center rounded-xl bg-red-50 text-sm font-black text-red-600">Pa</span>
+                                    <div className="mr-auto">
+                                        <h2 className="text-lg font-semibold text-slate-900">Pathao</h2>
+                                        <p className="text-xs text-slate-500">Client ID and secret are in the Pathao merchant panel under Developers API.</p>
+                                    </div>
+                                    {courierBadge('pathao')}
+                                </div>
+                                <div className="space-y-5 px-6 py-5">
+                                    <div className="space-y-4">
+                                        {toggle('pathao_enabled', 'Use Pathao for deliveries')}
+                                        {e.pathao_enabled && <p className="-mt-2 text-xs text-red-600">{e.pathao_enabled}</p>}
+                                        {toggle('pathao_sandbox', 'Sandbox (test) mode', "Use Pathao's test server. Turn off only with live credentials.")}
+                                    </div>
+                                    <div className="grid gap-4 sm:grid-cols-2">
+                                        {text('pathao_client_id', 'Client ID', { autoComplete: 'off' })}
+                                        {secret('pathao_client_secret', 'Client Secret')}
+                                        {text('pathao_username', 'Merchant email', { type: 'email', autoComplete: 'off' })}
+                                        {secret('pathao_password', 'Merchant password')}
+                                    </div>
+                                    <TestConnection courier="pathao" onStores={setPathaoStores} />
+                                    <div className="grid gap-4 sm:grid-cols-3">
+                                        <div>
+                                            <label className="label" htmlFor="pathao-store">Pickup store</label>
+                                            {pathaoStores ? (
+                                                <select id="pathao-store" className="input" value={form.data.pathao_store_id ?? ''} onChange={set('pathao_store_id')}>
+                                                    <option value="">First store</option>
+                                                    {pathaoStores.map((st) => <option key={st.id} value={st.id}>{st.name}</option>)}
+                                                </select>
+                                            ) : (
+                                                <input id="pathao-store" className="input" value={form.data.pathao_store_id ?? ''} onChange={set('pathao_store_id')} placeholder="Test connection to list" />
+                                            )}
+                                            {e.pathao_store_id && <p className="mt-1 text-xs text-red-600">{e.pathao_store_id}</p>}
+                                        </div>
+                                        <div>
+                                            <label className="label" htmlFor="pathao-type">Default delivery</label>
+                                            <select id="pathao-type" className="input" value={String(form.data.pathao_delivery_type ?? '48')} onChange={set('pathao_delivery_type')}>
+                                                <option value="48">Normal</option>
+                                                <option value="12">On-demand</option>
+                                            </select>
+                                        </div>
+                                        {text('pathao_item_weight', 'Default weight (kg)', { type: 'number', step: '0.1', min: '0.5', max: '10' })}
+                                    </div>
+                                    <div className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/60 p-4">
+                                        <p className="text-sm font-medium text-slate-900">Status webhook</p>
+                                        <p className="text-xs text-slate-500">In the Pathao merchant panel, add a webhook with the URL and secret below, then subscribe to the order events.</p>
+                                        <Copy label="Webhook URL" value={urls.pathaoWebhook} />
+                                        <Copy label="Webhook secret" value={form.data.pathao_webhook_secret ?? ''} />
+                                    </div>
+                                </div>
+                            </section>
+                        </div>
+                        <p className="flex items-start gap-2 text-sm text-slate-500"><Icon name="info" className="mt-0.5 h-4 w-4 shrink-0" /> Parcels are booked from each order's page (Orders → open an order → Courier). Test with sandbox or a single real parcel before shipping in bulk.</p>
                     </div>
                 )}
             </form>

@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Couriers\CourierManager;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Models\Setting;
 use App\Services\OrderService;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -39,6 +41,11 @@ class OrderController extends Controller
             'paymentStatuses' => Order::PAYMENT_STATUSES,
             'paymentMethods' => Order::PAYMENT_METHODS,
             'deliveryMethods' => Order::DELIVERY_METHODS,
+            'couriers' => app(CourierManager::class)->enabled(),
+            'courierDefaults' => [
+                'weight' => (float) (Setting::get('pathao_item_weight') ?: 0.5),
+                'delivery_type' => (int) (Setting::get('pathao_delivery_type') ?: 48),
+            ],
         ]);
     }
 

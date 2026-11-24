@@ -2,6 +2,7 @@ import Icon from './Icon';
 import { dateTime, titleCase } from '../lib/format';
 
 const steps = ['pending', 'processing', 'shipped', 'delivered'];
+const COURIERS = { steadfast: 'Steadfast', pathao: 'Pathao' };
 
 export default function OrderTimeline({ order }) {
     const cancelled = order.status === 'cancelled';
@@ -21,6 +22,21 @@ export default function OrderTimeline({ order }) {
                         </li>
                     ))}
                 </ol>
+            )}
+            {order.courier_consignment_id && order.status !== 'cancelled' && (
+                <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-md bg-blue-50 p-3 text-sm text-blue-900">
+                    <Icon name="truck" className="h-4 w-4 shrink-0" />
+                    <span>
+                        With <b>{COURIERS[order.courier] ?? titleCase(order.courier)}</b>
+                        {order.courier_status && <> · {titleCase(order.courier_status)}</>}
+                        {' · '}Consignment <span className="font-mono">{order.courier_tracking_code || order.courier_consignment_id}</span>
+                    </span>
+                    {order.courier_tracking_url && (
+                        <a href={order.courier_tracking_url} target="_blank" rel="noreferrer" className="ml-auto inline-flex items-center gap-1 font-semibold text-blue-700 hover:underline">
+                            Track parcel <Icon name="external" className="h-3.5 w-3.5" />
+                        </a>
+                    )}
+                </div>
             )}
             {order.histories?.length > 0 && (
                 <ul className="mt-5 space-y-2 border-l-2 border-slate-200 pl-4 text-sm">

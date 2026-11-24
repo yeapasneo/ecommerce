@@ -77,7 +77,10 @@ export default function Index({ orders, filters, statuses, paymentStatuses, stat
                                             <span className={`badge rounded-md ring-1 ring-inset ring-current/20 ${statusColor(o.payment_status)}`}>{titleCase(o.payment_status)}</span>
                                             <p className="mt-0.5 text-xs uppercase text-slate-500">{o.payment_method}</p>
                                         </td>
-                                        <td><span className={`badge rounded-md ring-1 ring-inset ring-current/20 ${statusColor(o.status)}`}>{titleCase(o.status)}</span></td>
+                                        <td>
+                                            <span className={`badge rounded-md ring-1 ring-inset ring-current/20 ${statusColor(o.status)}`}>{titleCase(o.status)}</span>
+                                            {o.courier && <p className="mt-0.5 flex items-center gap-1 text-xs text-slate-500"><Icon name="truck" className="h-3 w-3" /> {o.courier === 'pathao' ? 'Pathao' : 'Steadfast'} · {titleCase(o.courier_status ?? '')}</p>}
+                                        </td>
                                         <td className="whitespace-nowrap font-semibold">{money(o.total)}</td>
                                         <td className="pr-6">
                                             <div className="flex items-center justify-end gap-2">

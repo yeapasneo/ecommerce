@@ -120,6 +120,10 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('questions', [Admin\ReviewController::class, 'questions'])->name('questions.index');
     Route::patch('questions/{question}', [Admin\ReviewController::class, 'answer'])->name('questions.answer');
     Route::delete('questions/{question}', [Admin\ReviewController::class, 'destroyQuestion'])->name('questions.destroy');
+    Route::post('orders/{order}/courier', [Admin\CourierController::class, 'send'])->name('orders.courier');
+    Route::post('orders/{order}/courier/refresh', [Admin\CourierController::class, 'refresh'])->name('orders.courier.refresh');
+    Route::post('couriers/{courier}/test', [Admin\CourierController::class, 'test'])->name('couriers.test');
+    Route::get('couriers/pathao/locations', [Admin\CourierController::class, 'pathaoLocations'])->name('couriers.pathao.locations');
     Route::get('settings', [Admin\SettingController::class, 'edit'])->name('settings');
     Route::put('settings', [Admin\SettingController::class, 'update'])->name('settings.update');
     Route::get('messages', [Admin\SettingController::class, 'messages'])->name('messages');

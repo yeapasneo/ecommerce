@@ -129,6 +129,17 @@ Flow: the order is created, the customer is sent to the gateway, and the gateway
 
 Test every gateway with its sandbox credentials before going live. The Nagad and EPS integrations follow their published API docs but haven't been run against their sandboxes yet.
 
+## Couriers
+
+**Settings → Couriers** connects Steadfast and Pathao. Each has a **Test connection** button (Steadfast shows your balance, Pathao lists your pickup stores) and a status webhook URL plus token to paste into the courier's merchant panel.
+
+- Book a parcel from an order's page (**Courier → Send to Steadfast / Pathao**). Name, phone, address and cash to collect are prefilled (nothing to collect when the order was paid online). For Pathao, pick the city, zone and optional area from Pathao's own lists; the order's city is preselected.
+- Booking moves the order to Shipped. Courier updates arrive by webhook (or **Refresh status**) and are added to the order history. When a parcel is delivered the order becomes Delivered and cash-on-delivery orders are marked paid; switch this off with "Update orders from the courier".
+- Customers see the courier and a **Track parcel** link on the order tracking and account pages.
+- API secrets and passwords are stored encrypted. Code: `app/Couriers`, `app/Http/Controllers/Admin/CourierController.php`, `routes/webhooks.php`.
+
+Pathao was tested end to end against its public sandbox. Steadfast has no sandbox, so book one real parcel first to confirm the setup.
+
 ## Tests
 
 The feature tests run against a PostgreSQL database named `ecommerce_test` (see `phpunit.xml`):

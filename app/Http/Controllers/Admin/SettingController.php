@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Couriers\CourierManager;
 use App\Http\Controllers\Controller;
 use App\Models\ContactMessage;
 use App\Models\NewsletterSubscriber;
@@ -9,12 +10,20 @@ use App\Models\Order;
 use App\Models\Setting;
 use App\Payments\PaymentManager;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class SettingController extends Controller
 {
-    public function edit(PaymentManager $payments)
+    public function edit(PaymentManager $payments, CourierManager $couriers)
     {
+        // Webhook tokens are generated once; the admin pastes them into the courier panels.
+        $generated = collect(['steadfast_webhook_token', 'pathao_webhook_secret'])
+            ->filter(fn ($k) => blank(Setting::get($k)))
+            ->mapWithKeys(fn ($k) => [$k => Str::random(40)]);
+        if ($generated->isNotEmpty()) {
+            Setting::put($generated->all());
+        }
         $all = Setting::all_settings();
 
         return Inertia::render('Admin/Settings', [
@@ -28,14 +37,21 @@ class SettingController extends Controller
                 'sitemap' => route('sitemap'),
                 'robots' => route('robots'),
                 'sslcommerzIpn' => route('payment.ipn', ['gateway' => 'sslcommerz']),
+                'steadfastWebhook' => route('webhooks.courier', ['courier' => 'steadfast']),
+                'pathaoWebhook' => route('webhooks.courier', ['courier' => 'pathao']),
             ],
+            'couriers' => collect(CourierManager::COURIERS)->keys()->mapWithKeys(fn ($k) => [$k => [
+                'configured' => $couriers->driver($k)->isConfigured(),
+                'live' => $couriers->driver($k)->isEnabled(),
+            ]]),
             'ogImageUrl' => $all['seo_og_image'] ? media_url($all['seo_og_image']) : null,
         ]);
     }
 
-    public function update(Request $request, PaymentManager $payments)
+    public function update(Request $request, PaymentManager $payments, CourierManager $couriers)
     {
-        $flags = ['seo_noindex', 'cod_enabled', 'bkash_enabled', 'bkash_sandbox', 'nagad_enabled', 'nagad_sandbox', 'sslcommerz_enabled', 'sslcommerz_sandbox', 'eps_enabled', 'eps_sandbox'];
+        $flags = ['seo_noindex', 'cod_enabled', 'bkash_enabled', 'bkash_sandbox', 'nagad_enabled', 'nagad_sandbox', 'sslcommerz_enabled', 'sslcommerz_sandbox', 'eps_enabled', 'eps_sandbox',
+            'courier_sync_status', 'steadfast_enabled', 'pathao_enabled', 'pathao_sandbox'];
         $rules = collect(Setting::DEFAULTS)->map(fn () => ['nullable', 'string', 'max:1000'])->all();
         foreach (['delivery_charge_inside', 'delivery_charge_outside', 'express_delivery_charge', 'free_delivery_over'] as $k) {
             $rules[$k] = ['required', 'numeric', 'min:0'];
@@ -53,6 +69,11 @@ class SettingController extends Controller
         $rules['nagad_public_key'] = ['nullable', 'string', 'max:5000'];
         $rules['nagad_private_key'] = ['nullable', 'string', 'max:5000'];
         $rules['seo_og_image'] = ['nullable', 'image', 'max:2048'];
+        $rules['pathao_delivery_type'] = ['nullable', 'in:48,12'];
+        $rules['pathao_item_weight'] = ['nullable', 'numeric', 'min:0.5', 'max:10'];
+        $rules['pathao_store_id'] = ['nullable', 'integer'];
+        $rules['steadfast_webhook_token'] = ['nullable', 'string', 'min:16', 'max:100'];
+        $rules['pathao_webhook_secret'] = ['nullable', 'string', 'min:16', 'max:100'];
         $rules['seo_og_image_remove'] = ['nullable', 'boolean'];
 
         $data = $request->validate($rules, [
@@ -82,14 +103,15 @@ class SettingController extends Controller
 
         Setting::put($data);
 
-        // A gateway can only be switched on once all of its credentials are saved.
+        // A gateway or courier can only be switched on once all of its credentials are saved.
         $incomplete = collect(PaymentManager::GATEWAYS)->keys()
-            ->filter(fn ($k) => Setting::enabled("{$k}_enabled") && ! $payments->driver($k)->isConfigured());
+            ->filter(fn ($k) => Setting::enabled("{$k}_enabled") && ! $payments->driver($k)->isConfigured())
+            ->merge(collect(CourierManager::COURIERS)->keys()->filter(fn ($k) => Setting::enabled("{$k}_enabled") && ! $couriers->driver($k)->isConfigured()));
         if ($incomplete->isNotEmpty()) {
             Setting::put($incomplete->mapWithKeys(fn ($k) => ["{$k}_enabled" => '0'])->all());
 
-            return back()->withErrors($incomplete->mapWithKeys(fn ($k) => ["{$k}_enabled" => 'Fill in all '.Order::PAYMENT_METHODS[$k].' credentials before turning it on.'])->all())
-                ->with('error', 'Settings saved, but some gateways were left off because their credentials are incomplete.');
+            return back()->withErrors($incomplete->mapWithKeys(fn ($k) => ["{$k}_enabled" => 'Fill in all '.(Order::PAYMENT_METHODS[$k] ?? ucfirst($k)).' credentials before turning it on.'])->all())
+                ->with('error', 'Settings saved, but some gateways or couriers were left off because their credentials are incomplete.');
         }
 
         return back()->with('success', 'Settings saved.');

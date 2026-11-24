@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Couriers\CourierManager;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -29,6 +30,7 @@ class Order extends Model
         'order_number', 'user_id', 'first_name', 'last_name', 'email', 'phone', 'address', 'city', 'notes',
         'delivery_method', 'payment_method', 'payment_status', 'status', 'subtotal', 'delivery_charge', 'discount', 'total', 'coupon_code',
         'gateway_ref', 'transaction_id', 'paid_at',
+        'courier', 'courier_consignment_id', 'courier_tracking_code', 'courier_status', 'courier_fee', 'courier_cod', 'courier_sent_at', 'courier_status_at',
     ];
 
     protected $casts = [
@@ -37,7 +39,18 @@ class Order extends Model
         'discount' => 'float',
         'total' => 'float',
         'paid_at' => 'datetime',
+        'courier_fee' => 'float',
+        'courier_cod' => 'float',
+        'courier_sent_at' => 'datetime',
+        'courier_status_at' => 'datetime',
     ];
+
+    protected $appends = ['courier_tracking_url'];
+
+    public function getCourierTrackingUrlAttribute(): ?string
+    {
+        return $this->courier ? app(CourierManager::class)->trackingUrl($this) : null;
+    }
 
     public function user(): BelongsTo
     {

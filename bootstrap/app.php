@@ -18,6 +18,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
         then: function () {
             Route::middleware([])->group(base_path('routes/payment.php'));
+            Route::middleware([])->group(base_path('routes/webhooks.php'));
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {

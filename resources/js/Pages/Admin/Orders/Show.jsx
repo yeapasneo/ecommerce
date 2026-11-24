@@ -1,4 +1,5 @@
 import { Link, useForm } from '@inertiajs/react';
+import CourierPanel from '../../../Components/Admin/CourierPanel';
 import { Panel, Pill, SubCard } from '../../../Components/Admin/UI';
 import { TextArea } from '../../../Components/Field';
 import Icon from '../../../Components/Icon';
@@ -36,7 +37,7 @@ function ContactRow({ icon, children }) {
     );
 }
 
-export default function Show({ order, statuses, paymentStatuses, paymentMethods, deliveryMethods }) {
+export default function Show({ order, statuses, paymentStatuses, paymentMethods, deliveryMethods, couriers = {}, courierDefaults = {} }) {
     const form = useForm({ status: order.status, payment_status: order.payment_status, comment: '' });
     const save = (e) => {
         e.preventDefault();
@@ -154,6 +155,8 @@ export default function Show({ order, statuses, paymentStatuses, paymentMethods,
                             {form.data.status === 'cancelled' && order.status !== 'cancelled' && <p className="rounded-lg bg-red-50 p-3 text-xs text-red-700">Cancelling returns the items to stock.</p>}
                         </form>
                     </Panel>
+
+                    <CourierPanel order={order} couriers={couriers} defaults={courierDefaults} />
 
                     <Panel title="Customer Information">
                         <div className="mb-5 flex items-center gap-3 border-b border-slate-200 pb-5">
