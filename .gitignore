@@ -27,3 +27,4 @@ Homestead.yaml
 Thumbs.db
 /scripts/crawler/.cache
 __pycache__/
+/public/images/products/*.tmp
