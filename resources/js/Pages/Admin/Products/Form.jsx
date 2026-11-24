@@ -1,7 +1,10 @@
 import { Link, router, useForm } from '@inertiajs/react';
-import { Checkbox, Field, Select, TextArea, TextInput } from '../../../Components/Field';
+import { useEffect, useMemo } from 'react';
+import { Field, Select, TextArea, TextInput } from '../../../Components/Field';
+import { EmptyState, Panel, SubCard, Toggle } from '../../../Components/Admin/UI';
 import Icon from '../../../Components/Icon';
 import AdminLayout from '../../../Layouts/AdminLayout';
+import { money } from '../../../lib/format';
 
 export default function Form({ product, categories, brands, stockStatuses }) {
     const editing = !!product;
@@ -43,93 +46,141 @@ export default function Form({ product, categories, brands, stockStatuses }) {
     const setFeature = (i, v) => form.setData('key_features', form.data.key_features.map((f, j) => (j === i ? v : f)));
     const setSpec = (i, k, v) => form.setData('specs', form.data.specs.map((s, j) => (j === i ? { ...s, [k]: v } : s)));
     const specErrors = Object.entries(e).filter(([k]) => k.startsWith('specs.'));
+    const price = Number(form.data.price) || 0;
+    const regular = Number(form.data.regular_price) || 0;
+    const discount = regular > price && price > 0 ? Math.round(((regular - price) / regular) * 100) : 0;
+    const upload = useMemo(() => (form.data.image ? URL.createObjectURL(form.data.image) : null), [form.data.image]);
+    useEffect(() => () => upload && URL.revokeObjectURL(upload), [upload]);
+    const preview = upload ?? product?.image_url;
 
     return (
-        <AdminLayout title={editing ? `Edit: ${product.name}` : 'Add Product'} actions={<Link href="/admin/products" className="btn-outline"><Icon name="chevronLeft" className="h-4 w-4" /> Back to products</Link>}>
-            <form onSubmit={submit} className="grid gap-6 xl:grid-cols-[1fr_340px]">
+        <AdminLayout
+            title={editing ? 'Edit Product' : 'Create Product'}
+            subtitle={editing ? product.name : undefined}
+            back="/admin/products"
+            actions={
+                <>
+                    <Link href="/admin/products" className="btn-cancel rounded-lg"><Icon name="x" className="h-4 w-4" /> Cancel</Link>
+                    <button form="product-form" disabled={form.processing} className="btn-primary rounded-lg"><Icon name="check" className="h-4 w-4" /> {form.processing ? 'Saving…' : editing ? 'Update' : 'Create'}</button>
+                </>
+            }
+        >
+            <form id="product-form" onSubmit={submit} className="grid items-start gap-6 xl:grid-cols-[1fr_420px]">
                 <div className="space-y-6">
-                    <section className="card grid gap-4 p-5 sm:grid-cols-2">
-                        <h2 className="font-semibold sm:col-span-2">General</h2>
-                        <TextInput label="Product Name*" className="sm:col-span-2" value={form.data.name} onChange={set('name')} error={e.name} />
-                        <TextInput label="SKU / Product Code*" value={form.data.sku} onChange={set('sku')} error={e.sku} />
-                        <TextInput label="Model" value={form.data.model} onChange={set('model')} error={e.model} />
-                        <Select label="Category*" value={form.data.category_id} onChange={set('category_id')} error={e.category_id} placeholder="Select category" options={categories.map((c) => ({ value: c.id, label: c.name }))} />
-                        <Select label="Brand" value={form.data.brand_id} onChange={set('brand_id')} error={e.brand_id} placeholder="No brand" options={brands.map((b) => ({ value: b.id, label: b.name }))} />
-                        <TextArea label="Description (HTML allowed)" className="sm:col-span-2" rows={6} value={form.data.description} onChange={set('description')} error={e.description} />
-                    </section>
+                    <Panel title="Product Details">
+                        <div className="grid gap-4 sm:grid-cols-2">
+                            <TextInput label="Product Name*" className="sm:col-span-2" value={form.data.name} onChange={set('name')} error={e.name} placeholder="e.g. AMD Ryzen 5 7600 Processor" />
+                            <TextInput label="SKU / Product Code*" value={form.data.sku} onChange={set('sku')} error={e.sku} />
+                            <TextInput label="Model" value={form.data.model} onChange={set('model')} error={e.model} />
+                            <TextArea label="Description (HTML allowed)" className="sm:col-span-2" rows={6} value={form.data.description} onChange={set('description')} error={e.description} />
+                        </div>
+                    </Panel>
 
-                    <section className="card p-5">
-                        <h2 className="mb-3 font-semibold">Key Features</h2>
+                    <Panel title="Pricing & Inventory">
+                        <div className="grid gap-4 md:grid-cols-2">
+                            <SubCard title="Pricing" icon="percent" tone="orange">
+                                <div className="grid grid-cols-2 gap-3">
+                                    <TextInput label="Price (৳)*" type="number" step="0.01" value={form.data.price} onChange={set('price')} error={e.price} />
+                                    <TextInput label="Regular Price (৳)" type="number" step="0.01" value={form.data.regular_price} onChange={set('regular_price')} error={e.regular_price} />
+                                </div>
+                                <p className="mt-2 text-xs text-slate-500">Set a regular price above the price to show a discount.</p>
+                            </SubCard>
+                            <SubCard title="Inventory" icon="box" tone="blue">
+                                <div className="grid grid-cols-2 gap-3">
+                                    <TextInput label="Stock Quantity*" type="number" value={form.data.stock} onChange={set('stock')} error={e.stock} />
+                                    <TextInput label="Warranty (months)" type="number" value={form.data.warranty_months} onChange={set('warranty_months')} error={e.warranty_months} />
+                                    <Select label="Stock Status*" className="col-span-2" value={form.data.stock_status} onChange={set('stock_status')} error={e.stock_status} options={Object.entries(stockStatuses).map(([v, l]) => ({ value: v, label: l }))} />
+                                </div>
+                            </SubCard>
+                        </div>
+                        <div className="mt-6 flex justify-end border-t border-slate-200 pt-6">
+                            <div className="rounded-xl border-2 border-primary-200 bg-primary-50/60 px-6 py-3 text-center">
+                                <p className="text-sm font-medium text-primary-700">Selling Price</p>
+                                <p className="text-3xl font-bold text-primary-700">{money(price)}</p>
+                                {discount > 0 && <p className="text-xs font-medium text-green-700">{discount}% off {money(regular)}</p>}
+                            </div>
+                        </div>
+                    </Panel>
+
+                    <Panel title="Key Features">
                         <div className="space-y-2">
                             {form.data.key_features.map((f, i) => (
                                 <div key={i} className="flex gap-2">
-                                    <input className="input" value={f} onChange={(ev) => setFeature(i, ev.target.value)} placeholder="e.g. Processor: Intel Core i7" aria-label={`Feature ${i + 1}`} />
-                                    <button type="button" onClick={() => form.setData('key_features', form.data.key_features.filter((_, j) => j !== i))} className="btn-outline btn-sm" aria-label="Remove feature"><Icon name="x" className="h-4 w-4" /></button>
+                                    <input className="input rounded-lg" value={f} onChange={(ev) => setFeature(i, ev.target.value)} placeholder="e.g. Processor: Intel Core i7" aria-label={`Feature ${i + 1}`} />
+                                    <button type="button" onClick={() => form.setData('key_features', form.data.key_features.filter((_, j) => j !== i))} className="icon-btn h-[38px] w-[38px] shrink-0 hover:text-red-600" aria-label="Remove feature"><Icon name="x" className="h-4 w-4" /></button>
                                 </div>
                             ))}
                         </div>
-                        <button type="button" onClick={() => form.setData('key_features', [...form.data.key_features, ''])} className="btn-outline btn-sm mt-3"><Icon name="plus" className="h-4 w-4" /> Add feature</button>
-                    </section>
+                        <button type="button" onClick={() => form.setData('key_features', [...form.data.key_features, ''])} className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-primary-700 hover:underline"><Icon name="plus" className="h-4 w-4" /> Add feature</button>
+                    </Panel>
 
-                    <section className="card p-5">
-                        <h2 className="mb-1 font-semibold">Specifications</h2>
-                        <p className="mb-3 text-xs text-slate-500">Spec names used in a category's "filter attributes" appear as storefront filters.</p>
+                    <Panel title="Specifications">
+                        <p className="-mt-2 mb-4 text-sm text-slate-500">Spec names used in a category's filter attributes appear as storefront filters.</p>
                         <div className="space-y-2">
                             {form.data.specs.map((s, i) => (
-                                <div key={i} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2">
-                                    <input className="input" value={s.group} onChange={(ev) => setSpec(i, 'group', ev.target.value)} placeholder="Group" aria-label="Spec group" />
-                                    <input className="input" value={s.name} onChange={(ev) => setSpec(i, 'name', ev.target.value)} placeholder="Name (e.g. RAM)" aria-label="Spec name" />
-                                    <input className="input" value={s.value} onChange={(ev) => setSpec(i, 'value', ev.target.value)} placeholder="Value (e.g. 16GB)" aria-label="Spec value" />
-                                    <button type="button" onClick={() => form.setData('specs', form.data.specs.filter((_, j) => j !== i))} className="btn-outline btn-sm" aria-label="Remove spec"><Icon name="x" className="h-4 w-4" /></button>
+                                <div key={i} className="grid grid-cols-[1fr_1fr_1.3fr_auto] gap-2">
+                                    <input className="input rounded-lg" value={s.group} onChange={(ev) => setSpec(i, 'group', ev.target.value)} placeholder="Group" aria-label="Spec group" />
+                                    <input className="input rounded-lg" value={s.name} onChange={(ev) => setSpec(i, 'name', ev.target.value)} placeholder="Name (e.g. RAM)" aria-label="Spec name" />
+                                    <input className="input rounded-lg" value={s.value} onChange={(ev) => setSpec(i, 'value', ev.target.value)} placeholder="Value (e.g. 16GB)" aria-label="Spec value" />
+                                    <button type="button" onClick={() => form.setData('specs', form.data.specs.filter((_, j) => j !== i))} className="icon-btn h-[38px] w-[38px] hover:text-red-600" aria-label="Remove spec"><Icon name="x" className="h-4 w-4" /></button>
                                 </div>
                             ))}
                         </div>
                         {specErrors.length > 0 && <p className="mt-2 text-xs text-red-600">Each specification needs both a name and a value.</p>}
-                        <button type="button" onClick={() => form.setData('specs', [...form.data.specs, { group: form.data.specs.at(-1)?.group ?? 'General', name: '', value: '' }])} className="btn-outline btn-sm mt-3"><Icon name="plus" className="h-4 w-4" /> Add specification</button>
-                    </section>
-
-                    <section className="card grid gap-4 p-5">
-                        <h2 className="font-semibold">SEO</h2>
-                        <TextInput label="Slug" value={form.data.slug} onChange={set('slug')} error={e.slug} hint="Leave blank to generate from the name" />
-                        <TextInput label="Meta Title" value={form.data.meta_title} onChange={set('meta_title')} error={e.meta_title} />
-                        <TextArea label="Meta Description" rows={2} value={form.data.meta_description} onChange={set('meta_description')} error={e.meta_description} />
-                    </section>
+                        <button type="button" onClick={() => form.setData('specs', [...form.data.specs, { group: form.data.specs.at(-1)?.group ?? 'General', name: '', value: '' }])} className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-primary-700 hover:underline"><Icon name="plus" className="h-4 w-4" /> Add specification</button>
+                    </Panel>
                 </div>
 
                 <div className="space-y-6">
-                    <section className="card grid gap-4 p-5">
-                        <h2 className="font-semibold">Pricing & Stock</h2>
-                        <TextInput label="Price (৳)*" type="number" step="0.01" value={form.data.price} onChange={set('price')} error={e.price} />
-                        <TextInput label="Regular Price (৳)" type="number" step="0.01" value={form.data.regular_price} onChange={set('regular_price')} error={e.regular_price} hint="Higher than price to show a discount" />
-                        <TextInput label="Stock Quantity*" type="number" value={form.data.stock} onChange={set('stock')} error={e.stock} />
-                        <Select label="Stock Status*" value={form.data.stock_status} onChange={set('stock_status')} error={e.stock_status} options={Object.entries(stockStatuses).map(([v, l]) => ({ value: v, label: l }))} />
-                        <TextInput label="Warranty (months)" type="number" value={form.data.warranty_months} onChange={set('warranty_months')} error={e.warranty_months} />
-                        <Checkbox label="Visible in store" checked={form.data.is_active} onChange={(v) => form.setData('is_active', v)} />
-                        <Checkbox label="Featured on homepage" checked={form.data.is_featured} onChange={(v) => form.setData('is_featured', v)} />
-                    </section>
+                    <Panel title="Product Status">
+                        <div className="space-y-5">
+                            <Toggle label="Visible in store" description="Hidden products can't be found or bought." checked={form.data.is_active} onChange={(v) => form.setData('is_active', v)} />
+                            <Toggle label="Featured on homepage" description="Shows the product in the homepage featured list." checked={form.data.is_featured} onChange={(v) => form.setData('is_featured', v)} />
+                        </div>
+                    </Panel>
 
-                    <section className="card grid gap-4 p-5">
-                        <h2 className="font-semibold">Images</h2>
-                        {product?.image_url && <img src={product.image_url} alt="" className="h-40 w-full rounded object-contain" />}
-                        <Field label="Main Image" error={e.image}>
-                            <input type="file" accept="image/*" className="input" onChange={(ev) => form.setData('image', ev.target.files[0] ?? null)} />
+                    <Panel title="Organization">
+                        <div className="grid gap-4">
+                            <Select label="Category*" value={form.data.category_id} onChange={set('category_id')} error={e.category_id} placeholder="Select category" options={categories.map((c) => ({ value: c.id, label: c.name }))} />
+                            <Select label="Brand" value={form.data.brand_id} onChange={set('brand_id')} error={e.brand_id} placeholder="No brand" options={brands.map((b) => ({ value: b.id, label: b.name }))} />
+                        </div>
+                    </Panel>
+
+                    <Panel title="Images">
+                        {preview ? (
+                            <div className="mb-4 grid h-56 place-items-center rounded-xl border border-slate-200 bg-white p-3">
+                                <img src={preview} alt="" className="max-h-full max-w-full object-contain" />
+                            </div>
+                        ) : (
+                            <div className="mb-4 rounded-xl border border-dashed border-slate-300">
+                                <EmptyState icon="image" title="No image yet" text="Upload a main product photo." />
+                            </div>
+                        )}
+                        <Field label={preview ? 'Replace main image' : 'Main image'} error={e.image}>
+                            <input type="file" accept="image/*" className="input rounded-lg file:mr-3 file:rounded-md file:border-0 file:bg-primary-50 file:px-3 file:py-1 file:text-sm file:font-medium file:text-primary-700" onChange={(ev) => form.setData('image', ev.target.files[0] ?? null)} />
                         </Field>
                         {product?.images?.length > 0 && (
-                            <div className="grid grid-cols-3 gap-2">
+                            <div className="mt-4 grid grid-cols-4 gap-2">
                                 {product.images.map((img) => (
-                                    <div key={img.id} className="group relative">
-                                        <img src={img.url} alt="" className="h-20 w-full rounded object-cover" />
-                                        <button type="button" onClick={() => router.delete(`/admin/products/${product.id}/images/${img.id}`, { preserveScroll: true })} className="absolute right-1 top-1 rounded bg-white/90 p-1 text-red-600 shadow" aria-label="Delete image"><Icon name="trash" className="h-3.5 w-3.5" /></button>
+                                    <div key={img.id} className="relative rounded-lg border border-slate-200 p-1">
+                                        <img src={img.url} alt="" className="h-16 w-full object-contain" />
+                                        <button type="button" onClick={() => router.delete(`/admin/products/${product.id}/images/${img.id}`, { preserveScroll: true })} className="absolute -right-1.5 -top-1.5 grid h-6 w-6 place-items-center rounded-full bg-white text-red-600 shadow ring-1 ring-slate-200" aria-label="Delete image"><Icon name="x" className="h-3 w-3" /></button>
                                     </div>
                                 ))}
                             </div>
                         )}
-                        <Field label="Add Gallery Images" error={e.gallery || Object.entries(e).find(([k]) => k.startsWith('gallery.'))?.[1]}>
-                            <input type="file" accept="image/*" multiple className="input" onChange={(ev) => form.setData('gallery', Array.from(ev.target.files))} />
+                        <Field label="Add gallery images" className="mt-4" error={e.gallery || Object.entries(e).find(([k]) => k.startsWith('gallery.'))?.[1]}>
+                            <input type="file" accept="image/*" multiple className="input rounded-lg file:mr-3 file:rounded-md file:border-0 file:bg-primary-50 file:px-3 file:py-1 file:text-sm file:font-medium file:text-primary-700" onChange={(ev) => form.setData('gallery', Array.from(ev.target.files))} />
                         </Field>
-                    </section>
+                    </Panel>
 
-                    <button disabled={form.processing} className="btn-primary w-full py-3">{form.processing ? 'Saving…' : editing ? 'Update Product' : 'Create Product'}</button>
+                    <Panel title="Search Engine (SEO)" defaultOpen={!!(product?.meta_title || product?.meta_description)}>
+                        <div className="grid gap-4">
+                            <TextInput label="Slug" value={form.data.slug} onChange={set('slug')} error={e.slug} hint="Leave blank to generate from the name" />
+                            <TextInput label="Meta Title" value={form.data.meta_title} onChange={set('meta_title')} error={e.meta_title} />
+                            <TextArea label="Meta Description" rows={3} value={form.data.meta_description} onChange={set('meta_description')} error={e.meta_description} />
+                        </div>
+                    </Panel>
                 </div>
             </form>
         </AdminLayout>

@@ -15,7 +15,7 @@ class CustomerController extends Controller
             ->when($request->search, fn ($q, $s) => $q->where(fn ($qq) => $qq->where('name', 'ilike', "%{$s}%")->orWhere('email', 'ilike', "%{$s}%")->orWhere('phone', 'ilike', "%{$s}%")))
             ->when($request->role === 'admin', fn ($q) => $q->where('is_admin', true))
             ->when($request->role === 'customer', fn ($q) => $q->where('is_admin', false))
-            ->latest()->paginate(20)->withQueryString();
+            ->latest()->paginate($this->perPage())->withQueryString();
 
         return Inertia::render('Admin/Customers/Index', ['users' => $users, 'filters' => $request->only('search', 'role')]);
     }

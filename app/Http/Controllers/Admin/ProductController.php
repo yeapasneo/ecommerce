@@ -22,11 +22,12 @@ class ProductController extends Controller
             ->when($request->category_id, fn ($q, $c) => $q->where('category_id', $c))
             ->when($request->brand_id, fn ($q, $b) => $q->where('brand_id', $b))
             ->when($request->stock_status, fn ($q, $s) => $q->where('stock_status', $s))
-            ->latest('id')->paginate(20)->withQueryString();
+            ->latest('id')->paginate($this->perPage())->withQueryString();
 
         return Inertia::render('Admin/Products/Index', [
             'products' => $products,
-            'filters' => $request->only('search', 'category_id', 'brand_id', 'stock_status'),
+            'filters' => $request->only('search', 'category_id', 'brand_id', 'stock_status', 'per_page'),
+            'statusCounts' => Product::selectRaw('stock_status, count(*) as total')->groupBy('stock_status')->pluck('total', 'stock_status'),
             ...$this->options(),
         ]);
     }

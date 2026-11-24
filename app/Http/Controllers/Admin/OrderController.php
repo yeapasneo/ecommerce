@@ -20,11 +20,12 @@ class OrderController extends Controller
             ->when($request->payment_status, fn ($q, $s) => $q->where('payment_status', $s))
             ->when($request->from, fn ($q, $d) => $q->whereDate('created_at', '>=', $d))
             ->when($request->to, fn ($q, $d) => $q->whereDate('created_at', '<=', $d))
-            ->latest()->paginate(20)->withQueryString();
+            ->latest()->paginate($this->perPage())->withQueryString();
 
         return Inertia::render('Admin/Orders/Index', [
             'orders' => $orders,
-            'filters' => $request->only('search', 'status', 'payment_status', 'from', 'to'),
+            'filters' => $request->only('search', 'status', 'payment_status', 'from', 'to', 'per_page'),
+            'statusCounts' => Order::selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status'),
             'statuses' => Order::STATUSES,
             'paymentStatuses' => Order::PAYMENT_STATUSES,
         ]);

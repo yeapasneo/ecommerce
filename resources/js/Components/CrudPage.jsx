@@ -1,6 +1,7 @@
 import { router, useForm } from '@inertiajs/react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import AdminLayout from '../Layouts/AdminLayout';
+import { EmptyState, RowMenu, SearchBox } from './Admin/UI';
 import { Checkbox, Field, Select, TextArea, TextInput } from './Field';
 import Icon from './Icon';
 import Modal from './Modal';
@@ -10,8 +11,14 @@ import Modal from './Modal';
  * fields: [{ name, label, type: text|number|textarea|select|checkbox|file|date|color, options, hint, full }]
  * columns: [{ label, render(row) }]
  */
-export default function CrudPage({ title, rows, columns, fields, endpoint, singular, emptyRow, toForm, wide, extraActions }) {
+export default function CrudPage({ title, rows, columns, fields, endpoint, singular, emptyRow, toForm, wide, extraActions, description }) {
     const [editing, setEditing] = useState(null); // null | 'new' | row
+    const [search, setSearch] = useState('');
+    const shown = useMemo(() => {
+        const q = search.trim().toLowerCase();
+        if (!q) return rows;
+        return rows.filter((r) => ['name', 'title', 'code', 'slug'].some((k) => String(r[k] ?? '').toLowerCase().includes(q)));
+    }, [rows, search]);
     const form = useForm(emptyRow);
     const hasFile = fields.some((f) => f.type === 'file');
 
@@ -55,7 +62,7 @@ export default function CrudPage({ title, rows, columns, fields, endpoint, singu
             case 'file':
                 return (
                     <Field {...common} id={`f-${f.name}`}>
-                        <input id={`f-${f.name}`} type="file" accept="image/*" className="input" onChange={(e) => form.setData(f.name, e.target.files[0] ?? null)} />
+                        <input id={`f-${f.name}`} type="file" accept="image/*" className="input file:mr-3 file:rounded-md file:border-0 file:bg-primary-50 file:px-3 file:py-1 file:text-sm file:font-medium file:text-primary-700" onChange={(e) => form.setData(f.name, e.target.files[0] ?? null)} />
                     </Field>
                 );
             default:
@@ -63,47 +70,62 @@ export default function CrudPage({ title, rows, columns, fields, endpoint, singu
         }
     };
 
+    const addButton = <button onClick={() => open('new')} className="btn-primary h-10"><Icon name="plus" className="h-4 w-4" /> Add {singular}</button>;
+
     return (
-        <AdminLayout
-            title={title}
-            actions={
-                <>
-                    <button onClick={() => open('new')} className="btn-primary"><Icon name="plus" className="h-4 w-4" /> Add {singular}</button>
-                    {extraActions}
-                </>
-            }
-        >
-            <div className="card overflow-x-auto">
-                <table className="table-x min-w-[640px]">
-                    <thead>
-                        <tr>
-                            {columns.map((c) => <th key={c.label} className={c.className}>{c.label}</th>)}
-                            <th className="text-right">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {rows.map((row) => (
-                            <tr key={row.id}>
-                                {columns.map((c) => <td key={c.label} className={c.className}>{c.render(row)}</td>)}
-                                <td className="whitespace-nowrap text-right">
-                                    <button onClick={() => open(row)} className="btn-outline btn-sm mr-1" aria-label="Edit"><Icon name="edit" className="h-3.5 w-3.5" /></button>
-                                    <button onClick={() => destroy(row)} className="btn-outline btn-sm hover:text-red-600" aria-label="Delete"><Icon name="trash" className="h-3.5 w-3.5" /></button>
-                                </td>
-                            </tr>
-                        ))}
-                        {rows.length === 0 && (
-                            <tr><td colSpan={columns.length + 1} className="py-10 text-center text-slate-500">Nothing here yet.</td></tr>
-                        )}
-                    </tbody>
-                </table>
+        <AdminLayout title={title} header={false}>
+            <div className="panel mb-4 flex flex-wrap items-center gap-3 px-5 py-4">
+                <div className="mr-auto">
+                    <h1 className="flex items-center gap-2 text-xl font-semibold text-slate-900">
+                        {title} <span className="rounded-full bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700">{rows.length.toLocaleString()}</span>
+                    </h1>
+                    {description && <p className="mt-0.5 text-sm text-slate-500">{description}</p>}
+                </div>
+                {rows.length > 8 && <SearchBox value={search} onChange={setSearch} onSubmit={() => {}} placeholder={`Search ${title.toLowerCase()}…`} />}
+                {extraActions}
+                {addButton}
+            </div>
+
+            <div className="panel overflow-hidden">
+                {shown.length === 0 ? (
+                    search ? (
+                        <EmptyState icon="search" title="Nothing matches" text={`No ${title.toLowerCase()} match "${search}".`} />
+                    ) : (
+                        <EmptyState title={`No ${title} Added`} text={`Create your first ${singular.toLowerCase()} to get started.`} action={addButton} />
+                    )
+                ) : (
+                    <div className="overflow-x-auto">
+                        <table className="table-admin min-w-[640px]">
+                            <thead>
+                                <tr>
+                                    {columns.map((c, i) => <th key={c.label} className={`${i === 0 ? 'pl-6' : ''} ${c.className ?? ''}`}>{c.label}</th>)}
+                                    <th className="w-px" />
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {shown.map((row) => (
+                                    <tr key={row.id}>
+                                        {columns.map((c, i) => <td key={c.label} className={`${i === 0 ? 'pl-6' : ''} ${c.className ?? ''}`}>{c.render(row)}</td>)}
+                                        <td className="pr-6">
+                                            <div className="flex items-center justify-end gap-2">
+                                                <RowMenu items={[{ label: 'Edit', icon: 'edit', onClick: () => open(row) }, { label: 'Delete', icon: 'trash', onClick: () => destroy(row), danger: true }]} />
+                                                <button onClick={() => open(row)} className="btn-outline h-9 px-3 font-medium" aria-label="Edit"><Icon name="edit" className="h-4 w-4" /> Edit</button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
             </div>
 
             <Modal open={editing !== null} onClose={close} title={editing === 'new' ? `Add ${singular}` : `Edit ${singular}`} wide={wide}>
                 <form onSubmit={submit} className="grid gap-4 sm:grid-cols-2">
                     {fields.map(input)}
-                    <div className="flex justify-end gap-2 sm:col-span-2">
-                        <button type="button" onClick={close} className="btn-outline">Cancel</button>
-                        <button disabled={form.processing} className="btn-primary">{form.processing ? 'Saving…' : 'Save'}</button>
+                    <div className="-mx-6 -mb-6 mt-2 flex justify-end gap-2 border-t border-slate-100 px-6 py-4 sm:col-span-2">
+                        <button type="button" onClick={close} className="btn-cancel rounded-lg"><Icon name="x" className="h-4 w-4" /> Cancel</button>
+                        <button disabled={form.processing} className="btn-primary"><Icon name="check" className="h-4 w-4" /> {form.processing ? 'Saving…' : editing === 'new' ? 'Create' : 'Save'}</button>
                     </div>
                 </form>
             </Modal>
@@ -111,5 +133,6 @@ export default function CrudPage({ title, rows, columns, fields, endpoint, singu
     );
 }
 
-export const yesNo = (v) => <span className={`badge ${v ? 'bg-green-100 text-green-800' : 'bg-slate-200 text-slate-600'}`}>{v ? 'Yes' : 'No'}</span>;
-export const activeBadge = (v) => <span className={`badge ${v ? 'bg-green-100 text-green-800' : 'bg-slate-200 text-slate-600'}`}>{v ? 'Active' : 'Inactive'}</span>;
+const soft = 'badge rounded-md ring-1 ring-inset ring-current/20';
+export const yesNo = (v) => <span className={`${soft} ${v ? 'bg-green-50 text-green-700' : 'bg-slate-100 text-slate-600'}`}>{v ? 'Yes' : 'No'}</span>;
+export const activeBadge = (v) => <span className={`${soft} ${v ? 'bg-green-50 text-green-700' : 'bg-slate-100 text-slate-600'}`}>{v ? 'Active' : 'Inactive'}</span>;

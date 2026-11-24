@@ -16,7 +16,7 @@ class ReviewController extends Controller
             'reviews' => Review::with('user:id,name', 'product:id,name,slug')
                 ->when($request->status === 'pending', fn ($q) => $q->where('is_approved', false))
                 ->when($request->status === 'approved', fn ($q) => $q->where('is_approved', true))
-                ->latest()->paginate(20)->withQueryString(),
+                ->latest()->paginate($this->perPage())->withQueryString(),
             'filters' => $request->only('status'),
         ]);
     }
@@ -40,7 +40,7 @@ class ReviewController extends Controller
         return Inertia::render('Admin/Questions', [
             'questions' => Question::with('user:id,name', 'product:id,name,slug')
                 ->when($request->status === 'unanswered', fn ($q) => $q->whereNull('answer'))
-                ->latest()->paginate(20)->withQueryString(),
+                ->latest()->paginate($this->perPage())->withQueryString(),
             'filters' => $request->only('status'),
         ]);
     }

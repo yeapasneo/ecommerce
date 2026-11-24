@@ -1,5 +1,6 @@
 import { router } from '@inertiajs/react';
-import Pagination from '../../Components/Pagination';
+import { AdminPagination, EmptyState, Tabs } from '../../Components/Admin/UI';
+import Icon from '../../Components/Icon';
 import Stars from '../../Components/Stars';
 import AdminLayout from '../../Layouts/AdminLayout';
 import { date } from '../../lib/format';
@@ -7,32 +8,40 @@ import { date } from '../../lib/format';
 export default function Reviews({ reviews, filters }) {
     const tab = filters.status ?? '';
     return (
-        <AdminLayout title="Reviews">
-            <div className="mb-4 flex gap-2">
-                {[['', 'All'], ['pending', 'Pending'], ['approved', 'Approved']].map(([v, l]) => (
-                    <button key={v} onClick={() => router.get('/admin/reviews', v ? { status: v } : {})} className={`rounded-full px-3 py-1 text-sm ${tab === v ? 'bg-brand-700 text-white' : 'bg-white ring-1 ring-slate-200'}`}>{l}</button>
-                ))}
+        <AdminLayout title="Reviews" header={false}>
+            <div className="panel mb-4 flex flex-wrap items-center gap-3 px-5 py-4">
+                <h1 className="mr-auto flex items-center gap-2 text-xl font-semibold text-slate-900">
+                    Product Reviews <span className="rounded-full bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700">{reviews.total.toLocaleString()}</span>
+                </h1>
+                <Tabs value={tab} onChange={(v) => router.get('/admin/reviews', v ? { status: v } : {})} tabs={[{ value: '', label: 'All' }, { value: 'pending', label: 'Pending' }, { value: 'approved', label: 'Approved' }]} />
             </div>
-            <div className="space-y-3">
-                {reviews.data.map((r) => (
-                    <div key={r.id} className="card flex flex-col gap-3 p-4 sm:flex-row sm:items-start">
-                        <div className="flex-1 text-sm">
-                            <div className="flex flex-wrap items-center gap-2">
-                                <Stars value={r.rating} /> <b>{r.user?.name}</b> <span className="text-xs text-slate-400">{date(r.created_at)}</span>
-                                {!r.is_approved && <span className="badge bg-amber-100 text-amber-800">Pending</span>}
+            <div className="panel overflow-hidden">
+                {reviews.data.length === 0 && <EmptyState icon="star" title="No reviews here" text="Customer reviews will appear here for approval." />}
+                <ul className="divide-y divide-slate-100">
+                    {reviews.data.map((r) => (
+                        <li key={r.id} className="flex flex-col gap-3 px-6 py-5 sm:flex-row sm:items-start">
+                            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-primary-100 font-semibold text-primary-700">{r.user?.name?.[0]?.toUpperCase()}</span>
+                            <div className="min-w-0 flex-1 text-sm">
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <b className="text-slate-900">{r.user?.name}</b>
+                                    <Stars value={r.rating} />
+                                    <span className="text-xs text-slate-500">{date(r.created_at)}</span>
+                                    {!r.is_approved && <span className="badge rounded-md bg-amber-50 text-amber-700 ring-1 ring-inset ring-current/20">Pending</span>}
+                                </div>
+                                <a href={`/product/${r.product?.slug}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-primary-700 hover:underline">{r.product?.name} <Icon name="external" className="h-3 w-3" /></a>
+                                <p className="mt-1.5 text-slate-700">{r.comment}</p>
                             </div>
-                            <a href={`/product/${r.product?.slug}`} target="_blank" rel="noreferrer" className="text-xs text-brand-600 hover:underline">{r.product?.name}</a>
-                            <p className="mt-1 text-slate-700">{r.comment}</p>
-                        </div>
-                        <div className="flex gap-2">
-                            <button onClick={() => router.patch(`/admin/reviews/${r.id}`, { is_approved: !r.is_approved }, { preserveScroll: true })} className={r.is_approved ? 'btn-outline btn-sm' : 'btn-primary btn-sm'}>{r.is_approved ? 'Unapprove' : 'Approve'}</button>
-                            <button onClick={() => confirm('Delete this review?') && router.delete(`/admin/reviews/${r.id}`, { preserveScroll: true })} className="btn-outline btn-sm text-red-600">Delete</button>
-                        </div>
-                    </div>
-                ))}
-                {reviews.data.length === 0 && <div className="card p-10 text-center text-slate-500">No reviews.</div>}
+                            <div className="flex shrink-0 gap-2">
+                                <button onClick={() => router.patch(`/admin/reviews/${r.id}`, { is_approved: !r.is_approved }, { preserveScroll: true })} className={r.is_approved ? 'btn-outline h-9 px-3' : 'btn-primary h-9 px-3'}>
+                                    <Icon name={r.is_approved ? 'x' : 'check'} className="h-4 w-4" /> {r.is_approved ? 'Unapprove' : 'Approve'}
+                                </button>
+                                <button onClick={() => confirm('Delete this review?') && router.delete(`/admin/reviews/${r.id}`, { preserveScroll: true })} className="icon-btn hover:border-red-300 hover:text-red-600" aria-label="Delete review"><Icon name="trash" className="h-4 w-4" /></button>
+                            </div>
+                        </li>
+                    ))}
+                </ul>
+                <AdminPagination meta={reviews} params={filters} />
             </div>
-            <Pagination meta={reviews} />
         </AdminLayout>
     );
 }

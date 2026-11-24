@@ -31,7 +31,7 @@ class SettingController extends Controller
     public function messages()
     {
         return Inertia::render('Admin/Messages', [
-            'messages' => ContactMessage::latest()->paginate(20),
+            'messages' => ContactMessage::latest()->paginate($this->perPage())->withQueryString(),
             'subscribers' => NewsletterSubscriber::latest()->take(200)->get(),
         ]);
     }

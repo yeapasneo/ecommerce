@@ -56,9 +56,20 @@ const paths = {
     filter: 'M22 3H2l8 9.5V19l4 2v-8.5z',
     shield: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z',
     refresh: 'M23 4v6h-6M1 20v-6h6M3.5 9a9 9 0 0 1 14.9-3.4L23 10M1 14l4.6 4.4A9 9 0 0 0 20.5 15',
+    chevronUp: 'M5 15l7-7 7 7',
+    arrowLeft: 'M19 12H5M12 19l-7-7 7-7',
+    sidebar: 'M3 4h18v16H3zM9 4v16',
+    dots: 'M12 5h.01M12 12h.01M12 19h.01',
+    grip: 'M9 5h.01M9 12h.01M9 19h.01M15 5h.01M15 12h.01M15 19h.01',
+    store: 'M3 9l1.5-5h15L21 9M3 9v11h18V9M3 9a3 3 0 0 0 6 0 3 3 0 0 0 6 0 3 3 0 0 0 6 0M9 20v-6h6v6',
+    megaphone: 'M3 11v2a1 1 0 0 0 1 1h2l5 4V6L6 10H4a1 1 0 0 0-1 1zM15 9a3 3 0 0 1 0 6M18 6a7 7 0 0 1 0 12',
+    percent: 'M19 5L5 19M7.5 9a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3zM16.5 18a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3z',
+    card: 'M2 5h20v14H2zM2 10h20M6 15h4',
+    userCircle: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 13a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6.2 18.4a7 7 0 0 1 11.6 0',
+    info: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 16v-4M12 8h.01',
 };
 
-export default function Icon({ name, className = 'h-5 w-5', strokeWidth = 1.8, fill = 'none' }) {
+export default function Icon({ name, className = 'h-5 w-5', strokeWidth = name === 'dots' || name === 'grip' ? 3 : 1.8, fill = 'none' }) {
     return (
         <svg className={className} viewBox="0 0 24 24" fill={fill} stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d={paths[name] ?? paths.box} />
