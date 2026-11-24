@@ -90,19 +90,23 @@ The seeder creates about 110 products in about 45 categories and 30 brands, with
 
 ## Imported catalog
 
-`php artisan db:seed` loads `database/data/catalog.json.gz` when it exists (about 16,700 real products, 298 categories and 504 brands). Without that file it falls back to a small demo catalog. A full fresh seed takes about 80 seconds.
+`php artisan db:seed` loads `database/data/catalog.json.gz` when it exists (the full reference catalog: categories, brands, products, key features and spec tables). Without that file it falls back to a small demo catalog.
 
-The file is built by a Python crawler that collects only facts: names, product codes, prices, stock status, short key features, spec tables, categories and brands. It does not copy product photos or description text. Every product gets a generated placeholder image instead; upload real images from the admin panel.
+- **Product photos** are in `public/images/products/<slug>.webp` (500×500 WebP), downloaded by the crawler from the reference store. They belong to that store or the brands, so get permission before using them on a public site.
+- **Brand logos** are in `public/images/brands/<key>.svg`. The reference store publishes no brand logos, so `scripts/crawler/brand_logos.py` uses [Simple Icons](https://simpleicons.org) (CC0) for the brands it covers and draws a text wordmark for the rest.
+- A product or brand without a file gets a generated placeholder. Upload real images any time from the admin panel.
 
-To refresh or finish the crawl (it resumes from `scripts/crawler/.cache`):
+To refresh the crawl (it resumes from `scripts/crawler/.cache`):
 
 ```bash
-pip install requests beautifulsoup4
-python3 scripts/crawler/crawl.py --out database/data/catalog.json.gz
+pip install requests beautifulsoup4 pillow
+python3 scripts/crawler/crawl.py --refresh-listing --images public/images/products --out database/data/catalog.json.gz
+npm pack simple-icons && tar xzf simple-icons-*.tgz
+python3 scripts/crawler/brand_logos.py --icons package --out public/images/brands
 php artisan migrate:fresh --seed
 ```
 
-Use `--no-fetch` to rebuild the file from the cache without network requests, and `--limit N` for a quick partial crawl.
+Use `--no-fetch` to skip fetching product pages and `--limit N` for a quick partial crawl.
 
 ## Tests
 

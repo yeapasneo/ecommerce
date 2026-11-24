@@ -1,19 +1,21 @@
 #!/usr/bin/env python3
 """
-Catalog crawler: collects FACTUAL product data (category path, brand, name,
-model/code, prices, stock status, key features, specifications) from a
-reference store's public listing and product pages.
+Catalog crawler: collects product data (category path, brand, name,
+model/code, prices, stock status, key features, specifications) and the main
+product photo from a reference store's public listing and product pages.
 
-It deliberately does NOT download product photos or marketing description
-text, which are copyrighted by the retailer/brands. Use your own or
-brand-supplied images.
+Photos are saved as 500x500 WebP files named after the product slug. They
+belong to the retailer or the brands; get permission before using them on a
+public site. Marketing description text is not copied.
 
 Respects robots.txt disallow rules, rate-limits requests and is resumable.
 
 Usage:
-  python3 scripts/crawler/crawl.py --out database/data/catalog.json.gz
+  python3 scripts/crawler/crawl.py --out database/data/catalog.json.gz \
+      --images public/images/products
 """
 import argparse
+import io
 import gzip
 import json
 import re
@@ -27,6 +29,7 @@ from urllib.robotparser import RobotFileParser
 
 import requests
 from bs4 import BeautifulSoup
+from PIL import Image
 
 BASE = 'https://www.startech.com.bd'
 UA = 'Mozilla/5.0 (compatible; CatalogResearchBot/1.0)'
@@ -38,7 +41,7 @@ _lock = threading.Lock()
 _last = [0.0]
 
 
-def polite_get(url, delay, tries=4):
+def polite_get(url, delay, tries=4, binary=False):
     for attempt in range(tries):
         with _lock:
             wait = _last[0] + delay - time.time()
@@ -48,7 +51,7 @@ def polite_get(url, delay, tries=4):
         try:
             r = session.get(url, timeout=40)
             if r.status_code == 200:
-                return r.text
+                return r.content if binary else r.text
             if r.status_code == 404:
                 return None
         except requests.RequestException:
@@ -89,7 +92,8 @@ def crawl_listing(cat_url, delay):
                 continue
             url = a['href'].split('?')[0]
             feats = [li.get_text(' ', strip=True) for li in it.select('.short-description li')]
-            found[url] = {'key_features': [f for f in feats if f][:8]}
+            img = it.select_one('.p-item-img img')
+            found[url] = {'key_features': [f for f in feats if f][:8], 'image': img.get('src') if img else None}
         nxt = [x for x in soup.select('ul.pagination li a') if 'NEXT' in x.get_text(strip=True).upper()]
         if not items or not nxt:
             break
@@ -154,6 +158,8 @@ def parse_product(url, html):
     if not price:
         status = status or 'up coming'
 
+    img = soup.select_one('img.main-img')
+
     return {
         'url': url,
         'slug': urlparse(url).path.strip('/').split('/')[-1],
@@ -165,7 +171,32 @@ def parse_product(url, html):
         'regular_price': regular,
         'status': status,
         'specs': specs,
+        'image': img.get('src') if img else None,
     }
+
+
+def image_url(product, listing):
+    src = product.get('image') or (listing.get(product['url']) or {}).get('image')
+    if not src or 'image/cache/' not in src:
+        return src
+    return re.sub(r'-\d+x\d+(\.\w+)$', r'-500x500\1', src)
+
+
+def save_image(data, path):
+    im = Image.open(io.BytesIO(data))
+    im.load()
+    if im.mode in ('RGBA', 'LA', 'P'):
+        im = im.convert('RGBA')
+        bg = Image.new('RGB', im.size, 'white')
+        bg.paste(im, mask=im.split()[-1])
+        im = bg
+    else:
+        im = im.convert('RGB')
+    if max(im.size) > 500:
+        im.thumbnail((500, 500))
+    tmp = path.with_suffix('.tmp')
+    im.save(tmp, 'WEBP', quality=80, method=4)
+    tmp.replace(path)
 
 
 def main():
@@ -174,16 +205,20 @@ def main():
     ap.add_argument('--delay', type=float, default=0.35, help='min seconds between requests')
     ap.add_argument('--workers', type=int, default=4)
     ap.add_argument('--limit', type=int, default=0, help='max products (0 = all)')
-    ap.add_argument('--no-fetch', action='store_true', help='only write the output from already cached products')
+    ap.add_argument('--no-fetch', action='store_true', help='do not fetch product pages, use cached products only')
+    ap.add_argument('--refresh-listing', action='store_true', help='crawl the category listings again (keeps cached products)')
+    ap.add_argument('--images', help='download product photos into this directory as <slug>.webp')
+    ap.add_argument('--image-delay', type=float, default=0.18, help='min seconds between image requests')
     args = ap.parse_args()
 
     WORK.mkdir(exist_ok=True)
+    online = not args.no_fetch or args.refresh_listing or args.images
     rp = RobotFileParser(BASE + '/robots.txt')
-    if not args.no_fetch:
+    if online:
         rp.read()
 
     listing_file = WORK / 'listing.json'
-    if listing_file.exists():
+    if listing_file.exists() and not args.refresh_listing:
         listing = json.loads(listing_file.read_text())
     else:
         home = polite_get(BASE + '/', args.delay)
@@ -195,9 +230,12 @@ def main():
             for u, v in got.items():
                 listing.setdefault(u, v)
             print(f'  {c}: {len(got)} products (total {len(listing)})', flush=True)
+        if listing_file.exists():  # keep products that dropped out of the listings since last time
+            for u, v in json.loads(listing_file.read_text()).items():
+                listing.setdefault(u, v)
         listing_file.write_text(json.dumps(listing))
 
-    urls = list(listing) if args.no_fetch else [u for u in listing if rp.can_fetch(UA, u)]
+    urls = [u for u in listing if rp.can_fetch(UA, u)] if online else list(listing)
     if args.limit:
         urls = urls[: args.limit]
 
@@ -230,6 +268,39 @@ def main():
                 print(f'  fetched {i}/{len(todo)}', flush=True)
 
     products = [done[u] for u in urls if u in done]
+
+    if args.images:
+        img_dir = Path(args.images)
+        img_dir.mkdir(parents=True, exist_ok=True)
+        todo = [p for p in products if not (img_dir / f"{p['slug']}.webp").exists() and image_url(p, listing)]
+        print(f'{len(products)} products, {len(todo)} images to download', flush=True)
+
+        def fetch_image(p):
+            url = image_url(p, listing)
+            data = polite_get(url, args.image_delay, binary=True) if rp.can_fetch(UA, url) else None
+            orig = p.get('image') or (listing.get(p['url']) or {}).get('image')
+            if data is None and orig and orig != url:
+                data = polite_get(orig, args.image_delay, binary=True)
+            if data:
+                try:
+                    save_image(data, img_dir / f"{p['slug']}.webp")
+                    return True
+                except Exception as e:  # corrupt or unsupported image
+                    print(f'  bad image {url}: {e}', flush=True)
+            return False
+
+        ok = 0
+        with ThreadPoolExecutor(args.workers) as pool:
+            for i, f in enumerate(as_completed([pool.submit(fetch_image, p) for p in todo]), 1):
+                ok += f.result()
+                if i % 500 == 0:
+                    print(f'  images {i}/{len(todo)} ({ok} saved)', flush=True)
+        print(f'images done: {ok}/{len(todo)} saved', flush=True)
+
+    for p in products:
+        p.pop('image', None)
+        if args.images and (Path(args.images) / f"{p['slug']}.webp").exists():
+            p['image_file'] = f"{Path(args.images).name}/{p['slug']}.webp"
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     with gzip.open(out, 'wt', encoding='utf-8') as fh:

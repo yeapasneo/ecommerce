@@ -15,7 +15,9 @@ use Illuminate\Support\Str;
 /**
  * Seeds the catalog from database/data/catalog.json.gz (produced by scripts/crawler/crawl.py):
  * nested categories, brands, products, key features and specifications.
- * Product images are generated placeholders; upload real photos from the admin panel.
+ * Product photos come from public/images/products (downloaded by the crawler) and brand logos
+ * from public/images/brands (scripts/crawler/brand_logos.py); a generated placeholder is used
+ * when a file is missing.
  */
 class ImportedCatalogSeeder extends Seeder
 {
@@ -98,7 +100,12 @@ class ImportedCatalogSeeder extends Seeder
     {
         $ids = [];
         foreach (array_unique(array_filter(array_map(fn ($p) => trim($p['brand'] ?? ''), $products))) as $name) {
-            $brand = Brand::firstOrCreate(['name' => $name], ['slug' => $this->uniqueSlug($name, 'brands'), 'is_active' => true]);
+            $logo = 'images/brands/'.preg_replace('/[^a-z0-9]/', '', strtolower($name)).'.svg';
+            $brand = Brand::firstOrCreate(['name' => $name], [
+                'slug' => $this->uniqueSlug($name, 'brands'),
+                'logo' => is_file(public_path($logo)) ? '/'.$logo : null,
+                'is_active' => true,
+            ]);
             $ids[$name] = $brand->id;
         }
 
@@ -191,9 +198,13 @@ class ImportedCatalogSeeder extends Seeder
         $skus[$sku] = true;
 
         $slug = $this->uniqueSlug($p['slug'] ?: $p['name'], 'products');
-        $category = Category::find($categoryId);
-        $imagePath = "products/{$slug}.svg";
-        Storage::disk('public')->put($imagePath, PlaceholderImage::svg($p['name'], $category->icon ?? 'box', $p['brand'] ?? ''));
+        if (! empty($p['image_file']) && is_file(public_path('images/'.$p['image_file']))) {
+            $imagePath = '/images/'.$p['image_file'];
+        } else {
+            $category = Category::find($categoryId);
+            $imagePath = "products/{$slug}.svg";
+            Storage::disk('public')->put($imagePath, PlaceholderImage::svg($p['name'], $category->icon ?? 'box', $p['brand'] ?? ''));
+        }
 
         $features = $p['key_features'] ?: array_map(fn ($s) => "{$s['name']}: {$s['value']}", array_slice($p['specs'] ?? [], 0, 4));
         $brand = $p['brand'] ?? null;
