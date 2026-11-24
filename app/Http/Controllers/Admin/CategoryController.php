@@ -62,6 +62,9 @@ class CategoryController extends Controller
             'sort_order' => ['nullable', 'integer'],
             'is_active' => ['boolean'],
             'is_featured' => ['boolean'],
+            'meta_title' => ['nullable', 'string', 'max:255'],
+            'meta_description' => ['nullable', 'string', 'max:500'],
+            'meta_keywords' => ['nullable', 'string', 'max:255'],
         ]);
         $data['slug'] = Str::slug(($data['slug'] ?? null) ?: $data['name']);
         $data['sort_order'] = $data['sort_order'] ?? 0;

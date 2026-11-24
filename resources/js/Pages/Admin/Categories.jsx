@@ -20,7 +20,7 @@ export default function Categories({ categories }) {
             endpoint="/admin/categories"
             rows={sorted}
             wide
-            emptyRow={{ name: '', slug: '', parent_id: '', icon: '', description: '', filter_attributes: '', sort_order: 0, is_active: true, is_featured: false }}
+            emptyRow={{ name: '', slug: '', parent_id: '', icon: '', description: '', filter_attributes: '', sort_order: 0, is_active: true, is_featured: false , meta_title: '', meta_description: '', meta_keywords: '' }}
             toForm={(c) => ({ ...c, parent_id: c.parent_id ?? '', filter_attributes: (c.filter_attributes ?? []).join(', ') })}
             columns={[
                 { label: 'Category', render: (c) => <span className="font-medium">{pathOf(c)}</span> },
@@ -40,6 +40,10 @@ export default function Categories({ categories }) {
                 { name: 'sort_order', label: 'Sort Order', type: 'number' },
                 { name: 'is_active', label: 'Active', type: 'checkbox' },
                 { name: 'is_featured', label: 'Show on homepage (featured)', type: 'checkbox' },
+                { name: '_seo', label: 'Search Engine (SEO)', type: 'heading', hint: 'Optional. Blank fields are filled in automatically.' },
+                { name: 'meta_title', label: 'Meta Title', full: true, hint: 'About 50–60 characters' },
+                { name: 'meta_description', label: 'Meta Description', type: 'textarea', rows: 2, full: true, hint: 'About 120–160 characters' },
+                { name: 'meta_keywords', label: 'Keywords', full: true, hint: 'Comma separated' },
             ]}
         />
     );

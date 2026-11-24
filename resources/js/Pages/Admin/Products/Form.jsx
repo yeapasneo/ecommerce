@@ -1,6 +1,7 @@
 import { Link, router, useForm } from '@inertiajs/react';
 import { useEffect, useMemo } from 'react';
 import { Field, Select, TextArea, TextInput } from '../../../Components/Field';
+import SeoFields from '../../../Components/Admin/SeoFields';
 import { EmptyState, Panel, SubCard, Toggle } from '../../../Components/Admin/UI';
 import Icon from '../../../Components/Icon';
 import AdminLayout from '../../../Layouts/AdminLayout';
@@ -26,6 +27,7 @@ export default function Form({ product, categories, brands, stockStatuses }) {
         is_featured: product?.is_featured ?? false,
         meta_title: product?.meta_title ?? '',
         meta_description: product?.meta_description ?? '',
+        meta_keywords: product?.meta_keywords ?? '',
         specs: product?.specs?.length ? product.specs.map(({ group, name, value }) => ({ group, name, value })) : [{ group: 'Basic Information', name: '', value: '' }],
         image: null,
         gallery: [],
@@ -52,6 +54,14 @@ export default function Form({ product, categories, brands, stockStatuses }) {
     const upload = useMemo(() => (form.data.image ? URL.createObjectURL(form.data.image) : null), [form.data.image]);
     useEffect(() => () => upload && URL.revokeObjectURL(upload), [upload]);
     const preview = upload ?? product?.image_url;
+
+    // What the storefront uses when the SEO fields are left blank (mirrors ProductController::seo).
+    const brandName = brands.find((b) => String(b.id) === String(form.data.brand_id))?.name ?? '';
+    const categoryName = categories.find((c) => String(c.id) === String(form.data.category_id))?.name ?? '';
+    const features = form.data.key_features.filter((f) => f.trim());
+    const name = form.data.name.trim() || 'Product name';
+    const autoTitle = price > 0 ? [`${name} Price in Bangladesh`, `${name} Price in BD`].find((t) => t.length <= 60) ?? name : name;
+    const autoDescription = `${name}${price > 0 ? ` price in BD: ৳${Math.round(price).toLocaleString('en-US')}.` : '.'} ${features.slice(0, 4).join(', ')}`.trim();
 
     return (
         <AdminLayout
@@ -129,6 +139,23 @@ export default function Form({ product, categories, brands, stockStatuses }) {
                         {specErrors.length > 0 && <p className="mt-2 text-xs text-red-600">Each specification needs both a name and a value.</p>}
                         <button type="button" onClick={() => form.setData('specs', [...form.data.specs, { group: form.data.specs.at(-1)?.group ?? 'General', name: '', value: '' }])} className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-primary-700 hover:underline"><Icon name="plus" className="h-4 w-4" /> Add specification</button>
                     </Panel>
+
+                    <SeoFields
+                        form={form}
+                        path="/product/"
+                        auto={{ title: autoTitle, description: autoDescription, slug: form.data.name }}
+                        generate={() => ({
+                            title: autoTitle,
+                            description: autoDescription,
+                            keywords: [form.data.name, brandName, categoryName, brandName && categoryName ? `${brandName} ${categoryName}` : null, categoryName ? `${categoryName} price in bangladesh` : null].filter(Boolean).join(', ').toLowerCase(),
+                        })}
+                        checks={[
+                            { ok: !!preview, label: 'Has a main image' },
+                            { ok: features.length >= 3, label: 'At least 3 key features' },
+                            { ok: form.data.description.replace(/<[^>]+>/g, '').length >= 150, label: 'Description has 150+ characters' },
+                            { ok: form.data.specs.filter((sp) => sp.name && sp.value).length >= 5, label: '5+ specifications' },
+                        ]}
+                    />
                 </div>
 
                 <div className="space-y-6">
@@ -174,13 +201,6 @@ export default function Form({ product, categories, brands, stockStatuses }) {
                         </Field>
                     </Panel>
 
-                    <Panel title="Search Engine (SEO)" defaultOpen={!!(product?.meta_title || product?.meta_description)}>
-                        <div className="grid gap-4">
-                            <TextInput label="Slug" value={form.data.slug} onChange={set('slug')} error={e.slug} hint="Leave blank to generate from the name" />
-                            <TextInput label="Meta Title" value={form.data.meta_title} onChange={set('meta_title')} error={e.meta_title} />
-                            <TextArea label="Meta Description" rows={3} value={form.data.meta_description} onChange={set('meta_description')} error={e.meta_description} />
-                        </div>
-                    </Panel>
                 </div>
             </form>
         </AdminLayout>

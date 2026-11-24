@@ -12,7 +12,7 @@ class Category extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['parent_id', 'name', 'slug', 'icon', 'description', 'filter_attributes', 'sort_order', 'is_active', 'is_featured'];
+    protected $fillable = ['parent_id', 'name', 'slug', 'icon', 'description', 'filter_attributes', 'sort_order', 'is_active', 'is_featured', 'meta_title', 'meta_description', 'meta_keywords'];
 
     protected $casts = [
         'filter_attributes' => 'array',

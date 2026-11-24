@@ -1,5 +1,7 @@
 <?php
 
+use App\Support\Analytics;
+use App\Support\Seo;
 use Illuminate\Support\Str;
 
 if (! function_exists('media_url')) {
@@ -14,5 +16,19 @@ if (! function_exists('media_url')) {
         }
 
         return '/storage/'.ltrim($path, '/');
+    }
+}
+
+if (! function_exists('seo')) {
+    function seo(): Seo
+    {
+        return app(Seo::class);
+    }
+}
+
+if (! function_exists('analytics')) {
+    function analytics(): Analytics
+    {
+        return app(Analytics::class);
     }
 }

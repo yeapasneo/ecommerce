@@ -7,6 +7,7 @@ use App\Models\NewsletterSubscriber;
 use App\Models\Offer;
 use App\Models\Order;
 use App\Models\Page;
+use App\Models\Setting;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -14,6 +15,8 @@ class SiteController extends Controller
 {
     public function offers()
     {
+        seo()->title('Latest Offers & Deals')->description('Current discounts, bundle deals and promotions at '.Setting::get('site_name').'.');
+
         return Inertia::render('Offers', [
             'offers' => Offer::where('is_active', true)
                 ->where(fn ($q) => $q->whereNull('ends_at')->orWhere('ends_at', '>=', today()))
@@ -23,11 +26,16 @@ class SiteController extends Controller
 
     public function page(string $slug)
     {
-        return Inertia::render('Page', ['page' => Page::where('slug', $slug)->where('is_active', true)->firstOrFail()]);
+        $page = Page::where('slug', $slug)->where('is_active', true)->firstOrFail();
+        seo()->title($page->meta_title ?: $page->title)->description($page->meta_description ?: $page->content)->keywords($page->meta_keywords);
+
+        return Inertia::render('Page', ['page' => $page]);
     }
 
     public function contact()
     {
+        seo()->title('Contact Us')->description('Call, email or visit '.Setting::get('site_name').': '.Setting::get('address').'.');
+
         return Inertia::render('Contact');
     }
 

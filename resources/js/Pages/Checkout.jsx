@@ -1,6 +1,7 @@
 import { Link, useForm, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import Breadcrumbs from '../Components/Breadcrumbs';
+import Icon from '../Components/Icon';
 import { TextArea, TextInput } from '../Components/Field';
 import Seo from '../Components/Seo';
 import ShopLayout from '../Layouts/ShopLayout';
@@ -19,10 +20,10 @@ function Step({ n, title, children }) {
     );
 }
 
-export default function Checkout({ cart, paymentMethods, deliveryMethods, defaults }) {
+export default function Checkout({ cart, paymentMethods, deliveryMethods, defaults, initialDelivery = 0 }) {
     const { errors: pageErrors } = usePage().props;
-    const form = useForm({ ...defaults, notes: '', delivery_method: 'home_delivery', payment_method: 'cod', agree: false });
-    const [delivery, setDelivery] = useState(0);
+    const form = useForm({ ...defaults, notes: '', delivery_method: 'home_delivery', payment_method: Object.keys(paymentMethods)[0] ?? 'cod', agree: false });
+    const [delivery, setDelivery] = useState(initialDelivery);
 
     useEffect(() => {
         const t = setTimeout(() => {
@@ -70,7 +71,12 @@ export default function Checkout({ cart, paymentMethods, deliveryMethods, defaul
                                     {label}
                                 </label>
                             ))}
-                            {form.data.payment_method !== 'cod' && <p className="mt-2 rounded bg-amber-50 p-2 text-xs text-amber-800">Our team will contact you with payment instructions after you place the order.</p>}
+                            {form.errors.payment_method && <p className="mt-1 text-xs text-red-600">{form.errors.payment_method}</p>}
+                            {form.data.payment_method !== 'cod' && (
+                                <p className="mt-2 flex items-start gap-1.5 rounded bg-blue-50 p-2 text-xs text-blue-800">
+                                    <Icon name="shield" className="mt-px h-3.5 w-3.5 shrink-0" /> After you confirm, you'll be taken to {paymentMethods[form.data.payment_method]} to pay securely, then brought back here.
+                                </p>
+                            )}
                         </Step>
                         <Step n={3} title="Delivery Method">
                             {Object.entries(deliveryMethods).map(([value, label]) => (

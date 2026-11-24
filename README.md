@@ -108,6 +108,27 @@ php artisan migrate:fresh --seed
 
 Use `--no-fetch` to skip fetching product pages and `--limit N` for a quick partial crawl.
 
+## SEO
+
+- Every storefront page sends its title, description, canonical URL, robots, Open Graph / Twitter tags and JSON-LD in the first HTML response, so crawlers and link previews don't need JavaScript. The same tags are updated on client-side navigation (`app/Support/Seo.php`, `resources/js/Components/Seo.jsx`).
+- Structured data: Organization and WebSite search box (home), BreadcrumbList (categories, brands, products) and Product with offer, availability, brand and ratings.
+- Filtered/sorted listings, search, cart, checkout and account pages are `noindex` and canonicalise to the clean URL.
+- `/sitemap.xml` is an index of page, category, brand and product sitemaps (5,000 products per file, with images). `/robots.txt` is generated and points to it.
+- Products, categories, brands and pages have their own meta title, description and keywords in the admin. The product form shows a Google preview, length counters, an SEO checklist and can generate the fields from the product.
+- **Settings → SEO**: homepage title and description, default share image, Google/Bing/Facebook verification codes, and a switch that hides a staging site from search engines.
+
+## Tracking
+
+**Settings → Tracking** takes a Google Tag Manager container ID, a GA4 measurement ID and a Meta Pixel ID. They load on the storefront only and report page views on every navigation plus `view_item`, `add_to_cart`, `begin_checkout` and `purchase` (GA4 e-commerce format in the dataLayer; ViewContent, AddToCart, InitiateCheckout and Purchase for the Pixel).
+
+## Payments
+
+**Settings → Payments** has cash on delivery plus bKash (Tokenized Checkout), Nagad, SSLCommerz and EPS, each with a sandbox switch. Secrets are stored encrypted and never sent to the browser. A gateway appears at checkout only when it is switched on and all its credentials are filled in.
+
+Flow: the order is created, the customer is sent to the gateway, and the gateway returns to `/payment/{gateway}/{result}/{order}`. The order is marked paid only after the payment is confirmed server-to-server with the gateway (amount and reference are checked). SSLCommerz also calls the IPN URL shown in the settings. If a payment fails or is cancelled, the order page offers "Pay with…" buttons to try again. Code: `app/Payments`, `app/Http/Controllers/PaymentController.php`.
+
+Test every gateway with its sandbox credentials before going live. The Nagad and EPS integrations follow their published API docs but haven't been run against their sandboxes yet.
+
 ## Tests
 
 The feature tests run against a PostgreSQL database named `ecommerce_test` (see `phpunit.xml`):

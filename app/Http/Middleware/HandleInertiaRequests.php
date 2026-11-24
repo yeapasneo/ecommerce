@@ -31,7 +31,9 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $user ? $user->only('id', 'name', 'email', 'phone', 'is_admin') : null,
             ],
-            'settings' => fn () => Setting::all_settings(),
+            'settings' => fn () => Setting::public(),
+            'seo' => fn () => $request->is('admin*') ? null : seo()->toArray(),
+            'analytics' => fn () => $request->is('admin*') ? [] : analytics()->pull(),
             'menu' => fn () => $request->is('admin*') ? [] : Cache::remember('category_menu', 600, fn () => Category::menuTree()),
             'cartCount' => fn () => app(CartService::class)->count(),
             'compareCount' => fn () => count(session('compare', [])),

@@ -111,6 +111,12 @@ export default function Show({ order, statuses, paymentStatuses, paymentMethods,
                                     <span>{paymentMethods[order.payment_method] ?? titleCase(order.payment_method)}</span>
                                     <span className={`${soft} ${statusColor(order.payment_status)}`}>{titleCase(order.payment_status)}</span>
                                 </div>
+                                {(order.transaction_id || order.paid_at) && (
+                                    <dl className="mt-2 space-y-0.5 text-xs text-slate-500">
+                                        {order.transaction_id && <div className="flex justify-between gap-2"><dt>Transaction ID</dt><dd className="font-mono text-slate-700">{order.transaction_id}</dd></div>}
+                                        {order.paid_at && <div className="flex justify-between gap-2"><dt>Paid at</dt><dd>{dateTime(order.paid_at)}</dd></div>}
+                                    </dl>
+                                )}
                             </SubCard>
                             <SubCard title="Customer Note" icon="chat">
                                 <p className={`text-sm ${order.notes ? 'text-slate-700' : 'text-slate-500'}`}>{order.notes || 'No note from the customer'}</p>

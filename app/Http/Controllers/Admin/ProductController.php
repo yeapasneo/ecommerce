@@ -113,6 +113,7 @@ class ProductController extends Controller
             'is_featured' => ['boolean'],
             'meta_title' => ['nullable', 'string', 'max:255'],
             'meta_description' => ['nullable', 'string', 'max:500'],
+            'meta_keywords' => ['nullable', 'string', 'max:255'],
             'image' => ['nullable', 'image', 'max:4096'],
             'gallery' => ['nullable', 'array'],
             'gallery.*' => ['image', 'max:4096'],

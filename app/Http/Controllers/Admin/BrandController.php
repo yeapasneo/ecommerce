@@ -45,6 +45,9 @@ class BrandController extends Controller
             'slug' => ['nullable', 'string', 'max:255', Rule::unique('brands')->ignore($brand?->id)],
             'logo' => ['nullable', 'image', 'max:2048'],
             'is_active' => ['boolean'],
+            'meta_title' => ['nullable', 'string', 'max:255'],
+            'meta_description' => ['nullable', 'string', 'max:500'],
+            'meta_keywords' => ['nullable', 'string', 'max:255'],
         ]);
         $data['slug'] = Str::slug(($data['slug'] ?? null) ?: $data['name']);
         if ($request->hasFile('logo')) {

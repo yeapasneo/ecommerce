@@ -8,8 +8,10 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\CompareController;
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PcBuilderController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\SeoController;
 use App\Http\Controllers\SiteController;
 use Illuminate\Support\Facades\Route;
 
@@ -37,6 +39,13 @@ Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.in
 Route::post('/checkout/quote', [CheckoutController::class, 'quote'])->name('checkout.quote');
 Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store')->middleware('throttle:10,1');
 Route::get('/checkout/success/{number}', [CheckoutController::class, 'success'])->name('checkout.success');
+Route::post('/payment/{number}/pay', [PaymentController::class, 'pay'])->name('payment.pay')->middleware('throttle:10,1');
+Route::get('/payment/{number}/pay', [PaymentController::class, 'pay'])->name('payment.start');
+
+// SEO
+Route::get('/robots.txt', [SeoController::class, 'robots'])->name('robots');
+Route::get('/sitemap.xml', [SeoController::class, 'index'])->name('sitemap');
+Route::get('/sitemap-{type}.xml', [SeoController::class, 'sitemap'])->where('type', 'pages|categories|brands|products-\d+')->name('sitemap.part');
 
 Route::prefix('pc-builder')->name('pc-builder.')->controller(PcBuilderController::class)->group(function () {
     Route::get('/', 'index')->name('index');

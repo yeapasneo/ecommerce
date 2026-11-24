@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Coupon;
 use App\Models\Product;
 use App\Services\CartService;
+use App\Support\Analytics;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -30,6 +31,10 @@ class CartController extends Controller
         }
 
         $this->cart->add($product->id, $data['quantity'] ?? 1);
+        $product->loadMissing('brand:id,name', 'category:id,name');
+        $item = Analytics::item($product, $data['quantity'] ?? 1);
+        session()->flash('analytics_skip_view', $product->id); // the redirect back isn't a new product view
+        analytics()->push('add_to_cart', ['currency' => 'BDT', 'value' => $item['price'] * $item['quantity'], 'items' => [$item]]);
 
         if ($request->boolean('buy_now')) {
             return redirect()->route('checkout.index');

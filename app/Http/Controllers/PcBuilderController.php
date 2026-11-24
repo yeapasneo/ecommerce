@@ -37,6 +37,8 @@ class PcBuilderController extends Controller
 
         $total = $components->sum(fn ($c) => $c['product']['price'] ?? 0);
 
+        seo()->title('PC Builder - Build Your Own Computer')->description('Pick a processor, motherboard, RAM, storage and more, check compatibility and get the best price for your custom PC.');
+
         return Inertia::render('PcBuilder/Index', [
             'components' => $components,
             'total' => $total,

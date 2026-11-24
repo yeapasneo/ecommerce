@@ -57,6 +57,13 @@ export default function CrudPage({ title, rows, columns, fields, endpoint, singu
                 return <TextArea {...common} rows={f.rows ?? 4} value={value} onChange={onChange} />;
             case 'select':
                 return <Select {...common} value={value} onChange={onChange} options={f.options} placeholder={f.placeholder} />;
+            case 'heading':
+                return (
+                    <div key={f.name} className="mt-2 border-t border-slate-100 pt-4 sm:col-span-2">
+                        <p className="font-semibold text-slate-900">{f.label}</p>
+                        {f.hint && <p className="text-xs text-slate-500">{f.hint}</p>}
+                    </div>
+                );
             case 'checkbox':
                 return <Checkbox key={f.name} label={f.label} checked={form.data[f.name]} onChange={(v) => form.setData(f.name, v)} className={f.full ? 'sm:col-span-2' : ''} />;
             case 'file':
