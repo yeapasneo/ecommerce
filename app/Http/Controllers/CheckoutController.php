@@ -2,14 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Messaging\PhoneVerification;
+use App\Messaging\Sms\SmsException;
+use App\Models\BlockedPhone;
 use App\Models\Coupon;
 use App\Models\Order;
-use App\Models\Product;
+use App\Models\Setting;
 use App\Payments\PaymentManager;
 use App\Services\CartService;
+use App\Services\OrderService;
 use App\Support\Analytics;
+use App\Support\Phone;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -42,6 +46,10 @@ class CheckoutController extends Controller
         return Inertia::render('Checkout', [
             'cart' => $summary,
             'paymentMethods' => $this->payments->checkoutMethods(),
+            'otp' => [
+                'required' => app(PhoneVerification::class)->required(),
+                'verified' => session('verified_phones', []),
+            ],
             'initialDelivery' => CartService::deliveryCharge('home_delivery', $user?->city ?? 'Dhaka', $summary['subtotal']),
             'deliveryMethods' => Order::DELIVERY_METHODS,
             'defaults' => [
@@ -84,65 +92,39 @@ class CheckoutController extends Controller
             'agree' => ['accepted'],
         ], ['agree.accepted' => 'You must agree to the terms and conditions.']);
 
+        $this->guardPhone($data);
+
         $items = $this->cart->items();
         if ($items->isEmpty()) {
             return redirect()->route('cart.index')->with('error', 'Your cart is empty.');
         }
 
-        $order = DB::transaction(function () use ($data, $items) {
-            $subtotal = 0;
-            $lines = [];
-            foreach ($items as $item) {
-                $product = Product::lockForUpdate()->find($item->product_id);
-                if (! $product || ! $product->isPurchasable()) {
-                    throw ValidationException::withMessages(['cart' => "{$item->product->name} is no longer available. Please remove it from your cart."]);
+        $coupon = null;
+        $order = app(OrderService::class)->place(
+            $items->map(fn ($i) => ['product_id' => $i->product_id, 'quantity' => $i->quantity])->all(),
+            function (float $subtotal) use ($data, &$coupon) {
+                $coupon = $this->cart->appliedCoupon($subtotal);
+                $discount = $coupon ? $coupon->discountFor($subtotal) : 0;
+                $delivery = CartService::deliveryCharge($data['delivery_method'], $data['city'], $subtotal);
+
+                return collect($data)->except('agree')->all() + [
+                    'user_id' => auth()->id(),
+                    'subtotal' => $subtotal,
+                    'delivery_charge' => $delivery,
+                    'discount' => $discount,
+                    'total' => $subtotal - $discount + $delivery,
+                    'coupon_code' => $coupon?->code,
+                    'status' => 'pending',
+                    'payment_status' => 'unpaid',
+                    'source' => 'website',
+                ];
+            },
+            ['after' => function () use (&$coupon) {
+                if ($coupon) {
+                    Coupon::whereKey($coupon->id)->increment('used');
                 }
-                if ($product->stock_status === 'in_stock' && $product->stock < $item->quantity) {
-                    throw ValidationException::withMessages(['cart' => "Only {$product->stock} unit(s) of {$product->name} are in stock."]);
-                }
-                $subtotal += $product->price * $item->quantity;
-                $lines[] = [$product, $item->quantity];
-            }
-
-            $coupon = $this->cart->appliedCoupon($subtotal);
-            $discount = $coupon ? $coupon->discountFor($subtotal) : 0;
-            $delivery = CartService::deliveryCharge($data['delivery_method'], $data['city'], $subtotal);
-
-            $order = Order::create(collect($data)->except('agree')->all() + [
-                'order_number' => Order::generateNumber(),
-                'user_id' => auth()->id(),
-                'subtotal' => $subtotal,
-                'delivery_charge' => $delivery,
-                'discount' => $discount,
-                'total' => $subtotal - $discount + $delivery,
-                'coupon_code' => $coupon?->code,
-                'status' => 'pending',
-                'payment_status' => 'unpaid',
-            ]);
-
-            foreach ($lines as [$product, $qty]) {
-                $order->items()->create([
-                    'product_id' => $product->id,
-                    'name' => $product->name,
-                    'sku' => $product->sku,
-                    'price' => $product->price,
-                    'quantity' => $qty,
-                    'total' => $product->price * $qty,
-                ]);
-                if ($product->stock_status === 'in_stock') {
-                    $product->decrement('stock', $qty);
-                    if ($product->stock <= 0) {
-                        $product->update(['stock_status' => 'out_of_stock']);
-                    }
-                }
-            }
-            if ($coupon) {
-                Coupon::whereKey($coupon->id)->increment('used');
-            }
-            $order->histories()->create(['status' => 'pending', 'comment' => 'Order placed.']);
-
-            return $order;
-        });
+            }],
+        );
 
         $this->cart->clear();
         session()->forget('coupon');
@@ -153,6 +135,47 @@ class CheckoutController extends Controller
         }
 
         return redirect()->route('checkout.success', $order->order_number);
+    }
+
+    /** Phone checks before an order is created: OTP verification and the blocked-numbers list. */
+    protected function guardPhone(array $data): void
+    {
+        $otp = app(PhoneVerification::class);
+        if ($otp->required() && ! $otp->isVerified($data['phone'])) {
+            throw ValidationException::withMessages(['phone' => 'Please verify your mobile number with the code we send by SMS.']);
+        }
+        if (BlockedPhone::isBlocked($data['phone'])) {
+            if (Setting::get('fraud_block_mode') === 'all') {
+                throw ValidationException::withMessages(['phone' => 'We cannot accept orders from this number. Please call us to order.']);
+            }
+            if ($data['payment_method'] === 'cod') {
+                throw ValidationException::withMessages(['payment_method' => 'Cash on delivery is not available for this number. Please pay online.']);
+            }
+        }
+    }
+
+    public function sendOtp(Request $request, PhoneVerification $otp)
+    {
+        abort_unless($otp->required(), 404);
+        $data = $request->validate(['phone' => ['required', 'string', 'max:30']]);
+        try {
+            $otp->send($data['phone']);
+        } catch (SmsException $e) {
+            report($e);
+
+            return response()->json(['message' => 'We could not send the SMS right now. Please try again in a minute.'], 503);
+        }
+
+        return response()->json(['message' => 'Code sent to '.Phone::normalize($data['phone']).'.']);
+    }
+
+    public function verifyOtp(Request $request, PhoneVerification $otp)
+    {
+        abort_unless($otp->required(), 404);
+        $data = $request->validate(['phone' => ['required', 'string', 'max:30'], 'code' => ['required', 'digits:6']]);
+        $otp->verify($data['phone'], $data['code']);
+
+        return response()->json(['message' => 'Number verified.', 'verified' => session('verified_phones', [])]);
     }
 
     public function success(Request $request, string $number)

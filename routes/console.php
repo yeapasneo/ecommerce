@@ -1,8 +1,23 @@
 <?php
 
-use Illuminate\Foundation\Inspiring;
-use Illuminate\Support\Facades\Artisan;
+use App\Models\NotificationLog;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Schedule;
 
-Artisan::command('inspire', function () {
-    $this->comment(Inspiring::quote());
-})->purpose('Display an inspiring quote');
+/*
+| Runs from one cron entry on the server:
+|   * * * * * cd /path/to/app && php artisan schedule:run >> /dev/null 2>&1
+*/
+
+// Lets Admin → System Status confirm the scheduler is running.
+Schedule::call(fn () => Cache::forever('scheduler:last_run', now()->toIso8601String()))->everyMinute()->name('scheduler-heartbeat');
+
+// Catch courier updates whose webhook never arrived.
+Schedule::command('couriers:sync')->everyThirtyMinutes()->withoutOverlapping()->runInBackground();
+
+// Nightly database backup (keeps 14).
+Schedule::command('app:backup')->dailyAt('02:30')->withoutOverlapping();
+
+// Housekeeping.
+Schedule::command('queue:prune-failed --hours=720')->weekly();
+Schedule::call(fn () => NotificationLog::where('created_at', '<', now()->subMonths(6))->delete())->weekly()->name('prune-notification-log');

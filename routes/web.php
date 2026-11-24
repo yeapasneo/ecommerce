@@ -37,6 +37,8 @@ Route::delete('/cart/coupon/remove', [CartController::class, 'removeCoupon'])->n
 
 Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
 Route::post('/checkout/quote', [CheckoutController::class, 'quote'])->name('checkout.quote');
+Route::post('/checkout/otp/send', [CheckoutController::class, 'sendOtp'])->name('checkout.otp.send')->middleware('throttle:3,10');
+Route::post('/checkout/otp/verify', [CheckoutController::class, 'verifyOtp'])->name('checkout.otp.verify')->middleware('throttle:10,10');
 Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store')->middleware('throttle:10,1');
 Route::get('/checkout/success/{number}', [CheckoutController::class, 'success'])->name('checkout.success');
 Route::post('/payment/{number}/pay', [PaymentController::class, 'pay'])->name('payment.pay')->middleware('throttle:10,1');
@@ -102,12 +104,14 @@ Route::middleware('auth')->group(function () {
 // Admin panel
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', Admin\DashboardController::class)->name('dashboard');
+    Route::get('products/search', [Admin\ProductController::class, 'search'])->name('products.search');
     Route::resource('products', Admin\ProductController::class)->except('show');
     Route::delete('products/{product}/images/{image}', [Admin\ProductController::class, 'destroyImage'])->name('products.images.destroy');
     Route::resource('categories', Admin\CategoryController::class)->only('index', 'store', 'update', 'destroy');
     Route::resource('brands', Admin\BrandController::class)->only('index', 'store', 'update', 'destroy');
-    Route::resource('orders', Admin\OrderController::class)->only('index', 'show', 'update');
+    Route::resource('orders', Admin\OrderController::class)->only('index', 'create', 'store', 'show', 'update');
     Route::get('orders/{order}/invoice', [Admin\OrderController::class, 'invoice'])->name('orders.invoice');
+    Route::get('customers/lookup', [Admin\CustomerController::class, 'lookup'])->name('customers.lookup');
     Route::resource('customers', Admin\CustomerController::class)->only('index', 'show', 'update')->parameters(['customers' => 'user']);
     Route::resource('coupons', Admin\CouponController::class)->only('index', 'store', 'update', 'destroy');
     Route::resource('banners', Admin\BannerController::class)->only('index', 'store', 'update', 'destroy');
@@ -120,10 +124,19 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('questions', [Admin\ReviewController::class, 'questions'])->name('questions.index');
     Route::patch('questions/{question}', [Admin\ReviewController::class, 'answer'])->name('questions.answer');
     Route::delete('questions/{question}', [Admin\ReviewController::class, 'destroyQuestion'])->name('questions.destroy');
+    Route::get('fraud-check', [Admin\BlockedPhoneController::class, 'check'])->name('fraud.check');
+    Route::post('blocked-phones/unblock', [Admin\BlockedPhoneController::class, 'unblock'])->name('blocked-phones.unblock');
+    Route::resource('blocked-phones', Admin\BlockedPhoneController::class)->only('index', 'store', 'update', 'destroy');
     Route::post('orders/{order}/courier', [Admin\CourierController::class, 'send'])->name('orders.courier');
     Route::post('orders/{order}/courier/refresh', [Admin\CourierController::class, 'refresh'])->name('orders.courier.refresh');
     Route::post('couriers/{courier}/test', [Admin\CourierController::class, 'test'])->name('couriers.test');
     Route::get('couriers/pathao/locations', [Admin\CourierController::class, 'pathaoLocations'])->name('couriers.pathao.locations');
+    Route::get('system', [Admin\SystemController::class, 'index'])->name('system');
+    Route::post('system/backup', [Admin\SystemController::class, 'backup'])->name('system.backup')->middleware('throttle:3,10');
+    Route::get('system/backups/{name}', [Admin\SystemController::class, 'download'])->name('system.backups.download');
+    Route::post('system/retry-failed', [Admin\SystemController::class, 'retryFailed'])->name('system.retry-failed');
+    Route::post('settings/test-sms', [Admin\SettingController::class, 'testSms'])->name('settings.test-sms')->middleware('throttle:5,1');
+    Route::post('settings/test-email', [Admin\SettingController::class, 'testEmail'])->name('settings.test-email')->middleware('throttle:5,1');
     Route::get('settings', [Admin\SettingController::class, 'edit'])->name('settings');
     Route::put('settings', [Admin\SettingController::class, 'update'])->name('settings.update');
     Route::get('messages', [Admin\SettingController::class, 'messages'])->name('messages');

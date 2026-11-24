@@ -140,6 +140,17 @@ Test every gateway with its sandbox credentials before going live. The Nagad and
 
 Pathao was tested end to end against its public sandbox. Steadfast has no sandbox, so book one real parcel first to confirm the setup.
 
+## Running the shop
+
+- **Create Order** (Orders → Create Order): staff orders from phone calls, Facebook or the shop counter. Search products, edit prices, set a discount (percent or amount), delivery and payment. Typing a returning customer's phone fills in their details. Walk-in sales need no customer details.
+- **Notifications** (Settings → Notifications): SMS through BulkSMSBD, Alpha SMS or SSL Wireless, and email through SMTP. Choose which order updates go out (placed, confirmed, shipped, delivered, cancelled, payment received) and edit the SMS text with placeholders like `{name}`, `{order}`, `{tracking_url}`. A new-order alert can go to the shop's email. Every message is logged on the order page. Messages are sent by the queue worker.
+- **Checkout verification**: optional 6-digit SMS code before a customer can place an order.
+- **Fraud check**: each order shows the customer's delivered vs. cancelled record in this shop, and across couriers with a BD Courier API key. Mark a number as fraud from the order page or **Blocked Numbers**; checkout then refuses cash on delivery (or all orders) for it.
+- **System Status** (Settings → System Status): a go-live checklist (production mode, HTTPS, demo password, queue worker, scheduler, backups, email, SMS, sandbox modes) with how to fix each item, plus database backups to download.
+- **Scheduled jobs** (`routes/console.php`): courier status sync every 30 minutes, nightly database backup at 02:30, weekly clean-ups. Needs one cron entry.
+
+Deployment steps, Nginx and Supervisor configs are in **[DEPLOY.md](DEPLOY.md)** and `deploy/`.
+
 ## Tests
 
 The feature tests run against a PostgreSQL database named `ecommerce_test` (see `phpunit.xml`):

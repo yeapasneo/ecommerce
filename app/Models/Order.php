@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Couriers\CourierManager;
+use App\Messaging\OrderNotifier;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -21,15 +22,18 @@ class Order extends Model
         'nagad' => 'Nagad',
         'sslcommerz' => 'Card / Mobile Banking (SSLCommerz)',
         'eps' => 'EPS',
+        'cash' => 'Cash (in shop)',
         'online' => 'Online Payment',
     ];
+
+    public const SOURCES = ['website' => 'Website', 'phone' => 'Phone call', 'facebook' => 'Facebook / Messenger', 'in_shop' => 'In shop', 'other' => 'Other'];
 
     public const DELIVERY_METHODS = ['home_delivery' => 'Home Delivery', 'express' => 'Express Delivery', 'store_pickup' => 'Store Pickup'];
 
     protected $fillable = [
         'order_number', 'user_id', 'first_name', 'last_name', 'email', 'phone', 'address', 'city', 'notes',
         'delivery_method', 'payment_method', 'payment_status', 'status', 'subtotal', 'delivery_charge', 'discount', 'total', 'coupon_code',
-        'gateway_ref', 'transaction_id', 'paid_at',
+        'gateway_ref', 'transaction_id', 'paid_at', 'source',
         'courier', 'courier_consignment_id', 'courier_tracking_code', 'courier_status', 'courier_fee', 'courier_cod', 'courier_sent_at', 'courier_status_at',
     ];
 
@@ -70,7 +74,7 @@ class Order extends Model
     /** Record a verified gateway payment. Safe to call more than once (callback + IPN). */
     public function markPaid(string $gateway, ?string $transactionId, ?string $reference = null): bool
     {
-        return DB::transaction(function () use ($gateway, $transactionId, $reference) {
+        $paid = DB::transaction(function () use ($gateway, $transactionId, $reference) {
             $order = static::lockForUpdate()->find($this->id);
             if ($order->payment_status === 'paid') {
                 return false;
@@ -90,6 +94,11 @@ class Order extends Model
 
             return true;
         });
+        if ($paid) {
+            app(OrderNotifier::class)->notify($this, 'payment_received');
+        }
+
+        return $paid;
     }
 
     public function isPaid(): bool

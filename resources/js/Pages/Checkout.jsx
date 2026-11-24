@@ -20,7 +20,68 @@ function Step({ n, title, children }) {
     );
 }
 
-export default function Checkout({ cart, paymentMethods, deliveryMethods, defaults, initialDelivery = 0 }) {
+const normalizePhone = (p) => {
+    let d = String(p ?? '').replace(/\D+/g, '');
+    if (d.startsWith('880')) d = d.slice(2);
+    return d;
+};
+
+async function postJson(url, body) {
+    const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-XSRF-TOKEN': decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] ?? '') },
+        body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+        const first = data.errors ? Object.values(data.errors)[0]?.[0] : null;
+        throw new Error(first || data.message || (res.status === 429 ? 'Too many tries. Please wait a few minutes.' : 'Something went wrong.'));
+    }
+    return data;
+}
+
+/** Sends an SMS code to the mobile number and confirms it. */
+function PhoneVerify({ phone, verified, onVerified }) {
+    const [sentTo, setSentTo] = useState(null);
+    const [code, setCode] = useState('');
+    const [busy, setBusy] = useState(false);
+    const [msg, setMsg] = useState(null);
+    const current = normalizePhone(phone);
+    const isVerified = verified.includes(current);
+
+    if (isVerified) {
+        return <p className="mt-1.5 flex items-center gap-1 text-xs font-semibold text-green-700"><Icon name="check" className="h-3.5 w-3.5" /> Number verified</p>;
+    }
+    const send = async () => {
+        setBusy(true); setMsg(null);
+        try { const r = await postJson('/checkout/otp/send', { phone }); setSentTo(current); setCode(''); setMsg({ ok: true, text: r.message }); }
+        catch (e) { setMsg({ ok: false, text: e.message }); }
+        finally { setBusy(false); }
+    };
+    const verify = async () => {
+        setBusy(true); setMsg(null);
+        try { const r = await postJson('/checkout/otp/verify', { phone, code }); onVerified(r.verified); }
+        catch (e) { setMsg({ ok: false, text: e.message }); }
+        finally { setBusy(false); }
+    };
+    const codeSent = sentTo === current;
+    return (
+        <div className="mt-2 rounded-md bg-slate-50 p-3 ring-1 ring-slate-200">
+            <p className="mb-2 text-xs text-slate-600">We'll text you a 6-digit code to confirm this number.</p>
+            <div className="flex flex-wrap gap-2">
+                {codeSent && (
+                    <input className="input w-32 tracking-[0.3em]" inputMode="numeric" maxLength={6} placeholder="Code" value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))} aria-label="Verification code" />
+                )}
+                {codeSent && <button type="button" onClick={verify} disabled={busy || code.length !== 6} className="btn-primary">Verify</button>}
+                <button type="button" onClick={send} disabled={busy || current.length < 11} className="btn-outline">{codeSent ? 'Resend code' : 'Send code'}</button>
+            </div>
+            {msg && <p className={`mt-2 text-xs ${msg.ok ? 'text-green-700' : 'text-red-600'}`} role="status">{msg.text}</p>}
+        </div>
+    );
+}
+
+export default function Checkout({ cart, paymentMethods, deliveryMethods, defaults, initialDelivery = 0, otp = { required: false, verified: [] } }) {
+    const [verifiedPhones, setVerifiedPhones] = useState(otp.verified ?? []);
     const { errors: pageErrors } = usePage().props;
     const form = useForm({ ...defaults, notes: '', delivery_method: 'home_delivery', payment_method: Object.keys(paymentMethods)[0] ?? 'cod', agree: false });
     const [delivery, setDelivery] = useState(initialDelivery);
@@ -56,7 +117,10 @@ export default function Checkout({ cart, paymentMethods, deliveryMethods, defaul
                         <div className="grid gap-4 sm:grid-cols-2">
                             <TextInput label="First Name*" value={form.data.first_name} onChange={set('first_name')} error={form.errors.first_name} />
                             <TextInput label="Last Name" value={form.data.last_name} onChange={set('last_name')} error={form.errors.last_name} />
-                            <TextInput label="Mobile*" value={form.data.phone} onChange={set('phone')} error={form.errors.phone} />
+                            <div>
+                                <TextInput label="Mobile*" value={form.data.phone} onChange={set('phone')} error={form.errors.phone} />
+                                {otp.required && <PhoneVerify phone={form.data.phone} verified={verifiedPhones} onVerified={setVerifiedPhones} />}
+                            </div>
                             <TextInput label="Email" type="email" value={form.data.email} onChange={set('email')} error={form.errors.email} />
                             <TextArea label="Address*" rows={2} className="sm:col-span-2" value={form.data.address} onChange={set('address')} error={form.errors.address} />
                             <TextInput label="City / District*" value={form.data.city} onChange={set('city')} error={form.errors.city} hint="Delivery inside Dhaka is cheaper" />

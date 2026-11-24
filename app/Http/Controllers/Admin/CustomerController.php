@@ -3,7 +3,10 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Order;
 use App\Models\User;
+use App\Services\FraudCheck;
+use App\Support\Phone;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -37,5 +40,24 @@ class CustomerController extends Controller
         $user->update($data);
 
         return back()->with('success', 'Customer updated.');
+    }
+
+    /** Fill in a staff order from the customer's account or last order (JSON). */
+    public function lookup(Request $request, FraudCheck $fraud)
+    {
+        $phone = (string) $request->query('phone');
+        if (! Phone::isValid($phone)) {
+            return response()->json(['found' => false]);
+        }
+        $key = Phone::key($phone);
+        $user = User::whereRaw("right(regexp_replace(coalesce(phone, ''), '[^0-9]', '', 'g'), 10) = ?", [$key])->first(['id', 'name', 'email', 'address', 'city']);
+        $last = Order::whereRaw("right(regexp_replace(phone, '[^0-9]', '', 'g'), 10) = ?", [$key])->latest('id')->first(['first_name', 'last_name', 'email', 'address', 'city']);
+
+        return response()->json([
+            'found' => (bool) ($user || $last),
+            'user' => $user,
+            'last' => $last,
+            'validity' => $fraud->report($phone),
+        ]);
     }
 }

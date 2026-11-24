@@ -1,5 +1,6 @@
 import { Link, useForm } from '@inertiajs/react';
 import CourierPanel from '../../../Components/Admin/CourierPanel';
+import CustomerValidity from '../../../Components/Admin/CustomerValidity';
 import { Panel, Pill, SubCard } from '../../../Components/Admin/UI';
 import { TextArea } from '../../../Components/Field';
 import Icon from '../../../Components/Icon';
@@ -37,7 +38,7 @@ function ContactRow({ icon, children }) {
     );
 }
 
-export default function Show({ order, statuses, paymentStatuses, paymentMethods, deliveryMethods, couriers = {}, courierDefaults = {} }) {
+export default function Show({ order, statuses, paymentStatuses, paymentMethods, deliveryMethods, couriers = {}, courierDefaults = {}, validity = null, notificationLog = [] }) {
     const form = useForm({ status: order.status, payment_status: order.payment_status, comment: '' });
     const save = (e) => {
         e.preventDefault();
@@ -173,6 +174,7 @@ export default function Show({ order, statuses, paymentStatuses, paymentMethods,
                             {order.email && <ContactRow icon="mail"><a href={`mailto:${order.email}`} className="hover:text-primary-700">{order.email}</a></ContactRow>}
                             <ContactRow icon="pin">{order.address}, {order.city}</ContactRow>
                         </div>
+                        <div className="mt-5"><CustomerValidity phone={order.phone} orderId={order.id} initial={validity} /></div>
                     </Panel>
 
                     <Panel title="Status History">
@@ -188,6 +190,26 @@ export default function Show({ order, statuses, paymentStatuses, paymentMethods,
                                 </li>
                             ))}
                         </ol>
+                    </Panel>
+
+                    <Panel title="Messages Sent" defaultOpen={notificationLog.length > 0} actions={<span className="text-sm text-slate-500">{notificationLog.length}</span>}>
+                        {notificationLog.length === 0 ? (
+                            <p className="text-sm text-slate-500">No SMS or email sent for this order yet. Set them up in <Link href="/admin/settings#notifications" className="font-medium text-primary-700 hover:underline">Settings → Notifications</Link>.</p>
+                        ) : (
+                            <ul className="space-y-3">
+                                {notificationLog.map((n) => (
+                                    <li key={n.id} className="flex gap-3 text-sm">
+                                        <span className={`mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full ${n.status === 'sent' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'}`}><Icon name={n.channel === 'sms' ? 'chat' : 'mail'} className="h-3.5 w-3.5" /></span>
+                                        <div className="min-w-0">
+                                            <p className="font-medium text-slate-900">{titleCase(n.event)} <span className="font-normal text-slate-500">· {n.channel === 'sms' ? 'SMS' : 'Email'} to {n.recipient}</span></p>
+                                            <p className="text-xs text-slate-500">{dateTime(n.created_at)} · {n.status === 'sent' ? 'Sent' : 'Failed'}</p>
+                                            {n.status === 'failed' && n.error && <p className="mt-0.5 text-xs text-red-600">{n.error}</p>}
+                                            {n.channel === 'sms' && n.message && <p className="mt-1 rounded-lg bg-slate-50 p-2 text-xs text-slate-600">{n.message}</p>}
+                                        </div>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
                     </Panel>
                 </div>
             </div>

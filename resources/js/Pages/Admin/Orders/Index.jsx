@@ -5,7 +5,7 @@ import Icon from '../../../Components/Icon';
 import AdminLayout from '../../../Layouts/AdminLayout';
 import { cleanParams, dateTime, money, statusColor, titleCase } from '../../../lib/format';
 
-export default function Index({ orders, filters, statuses, paymentStatuses, statusCounts }) {
+export default function Index({ orders, filters, statuses, paymentStatuses, statusCounts, sources }) {
     const [f, setF] = useState({ search: '', status: '', payment_status: '', from: '', to: '', ...filters });
     const apply = (next = f) => router.get('/admin/orders', cleanParams({ ...next, per_page: orders.per_page === 20 ? undefined : orders.per_page, page: undefined }), { preserveState: true, preserveScroll: true });
     const update = (patch) => {
@@ -24,6 +24,7 @@ export default function Index({ orders, filters, statuses, paymentStatuses, stat
                     All Orders <span className="rounded-full bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700">{total.toLocaleString()}</span>
                 </h1>
                 <SearchBox value={f.search} onChange={(v) => setF({ ...f, search: v })} onSubmit={() => apply()} placeholder="Order #, name, phone, email…" />
+                <Link href="/admin/orders/create" className="btn-primary h-10"><Icon name="plus" className="h-4 w-4" /> Create Order</Link>
             </div>
 
             <div className="panel mb-4 flex flex-wrap items-center gap-3 px-4 py-3">
@@ -70,7 +71,10 @@ export default function Index({ orders, filters, statuses, paymentStatuses, stat
                                 {orders.data.map((o) => (
                                     <tr key={o.id}>
                                         <td className="pl-6"><Link href={`/admin/orders/${o.id}`} className="font-semibold text-primary-700 hover:underline">#{o.order_number}</Link></td>
-                                        <td><p className="font-medium text-slate-900">{o.first_name} {o.last_name}</p><p className="text-xs text-slate-500">{o.phone}</p></td>
+                                        <td>
+                                            <p className="font-medium text-slate-900">{o.first_name} {o.last_name}{o.flagged && <span className="badge ml-1.5 rounded-md bg-red-600 text-white">Fraud</span>}</p>
+                                            <p className="text-xs text-slate-500">{o.phone}{o.source && o.source !== 'website' && <> · {sources?.[o.source] ?? o.source}</>}</p>
+                                        </td>
                                         <td className="whitespace-nowrap text-xs text-slate-600">{dateTime(o.created_at)}</td>
                                         <td><Pill>{o.items_count}</Pill></td>
                                         <td>

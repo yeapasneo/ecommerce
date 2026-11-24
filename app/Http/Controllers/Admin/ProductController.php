@@ -32,6 +32,26 @@ class ProductController extends Controller
         ]);
     }
 
+    /** Product picker for staff orders (JSON). */
+    public function search(Request $request)
+    {
+        $term = trim((string) $request->query('q'));
+        if (mb_strlen($term) < 2) {
+            return response()->json([]);
+        }
+
+        return response()->json(Product::active()
+            ->where(fn ($q) => $q->where('name', 'ilike', "%{$term}%")->orWhere('sku', 'ilike', "%{$term}%"))
+            ->orderByRaw("case when stock_status = 'in_stock' then 0 else 1 end")
+            ->orderBy('name')->take(12)
+            ->get(['id', 'name', 'sku', 'price', 'stock', 'stock_status', 'image', 'is_active'])
+            ->map(fn ($p) => [
+                'id' => $p->id, 'name' => $p->name, 'sku' => $p->sku, 'price' => (float) $p->price,
+                'stock' => $p->stock, 'stock_status' => $p->stock_status, 'stock_label' => $p->stock_label,
+                'image_url' => $p->image_url, 'purchasable' => $p->isPurchasable(),
+            ]));
+    }
+
     public function create()
     {
         return Inertia::render('Admin/Products/Form', ['product' => null, ...$this->options()]);

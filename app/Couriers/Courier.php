@@ -5,6 +5,7 @@ namespace App\Couriers;
 use App\Models\Order;
 use App\Models\Setting;
 use App\Services\OrderService;
+use App\Support\Phone;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Http\Request;
@@ -119,12 +120,7 @@ abstract class Courier
     /** Bangladeshi mobile number as 01XXXXXXXXX. */
     public static function phone(string $phone): string
     {
-        $digits = preg_replace('/\D+/', '', $phone);
-        if (str_starts_with($digits, '880')) {
-            $digits = substr($digits, 2);
-        }
-
-        return $digits;
+        return Phone::normalize($phone);
     }
 
     protected function fail(string $message, ?Response $response = null): never

@@ -84,6 +84,44 @@ class Setting extends Model
         'pathao_delivery_type' => '48',
         'pathao_item_weight' => '0.5',
         'pathao_webhook_secret' => '',
+
+        // Notifications
+        'sms_provider' => '',            // bulksmsbd | alphasms | sslwireless
+        'sms_api_key' => '',
+        'sms_sender_id' => '',
+        'notify_admin_email' => '',      // new-order alerts for the shop
+        'checkout_otp' => '0',
+        'mail_host' => '',
+        'mail_port' => '587',
+        'mail_username' => '',
+        'mail_password' => '',
+        'mail_encryption' => 'tls',
+        'mail_from_address' => '',
+        'mail_from_name' => '',
+        'notify_sms_order_placed' => '1',
+        'notify_sms_order_confirmed' => '0',
+        'notify_sms_order_shipped' => '1',
+        'notify_sms_order_delivered' => '1',
+        'notify_sms_order_cancelled' => '1',
+        'notify_sms_payment_received' => '1',
+        'notify_email_order_placed' => '1',
+        'notify_email_order_confirmed' => '1',
+        'notify_email_order_shipped' => '1',
+        'notify_email_order_delivered' => '1',
+        'notify_email_order_cancelled' => '1',
+        'notify_email_payment_received' => '1',
+        'sms_template_order_placed' => 'Dear {name}, your order #{order} of Tk {total} is placed at {site}. We will call you to confirm.',
+        'sms_template_order_confirmed' => 'Your order #{order} is confirmed and being packed. - {site}',
+        'sms_template_order_shipped' => 'Your order #{order} is on the way{courier}. Track: {tracking_url} - {site}',
+        'sms_template_order_delivered' => 'Your order #{order} has been delivered. Thank you for shopping with {site}!',
+        'sms_template_order_cancelled' => 'Your order #{order} has been cancelled. Questions? Call {phone}. - {site}',
+        'sms_template_payment_received' => 'We received Tk {amount} for order #{order}. Thank you! - {site}',
+        'sms_template_otp' => '{code} is your {site} verification code. It expires in 10 minutes.',
+
+        // Fraud check
+        'fraud_provider' => '',          // bdcourier
+        'bdcourier_api_key' => '',
+        'fraud_block_mode' => 'cod',     // cod | all
     ];
 
     /** Stored encrypted and never sent to the browser (the admin form only sees whether they are set). */
@@ -94,6 +132,7 @@ class Setting extends Model
         'eps_password', 'eps_hash_key',
         'steadfast_api_key', 'steadfast_secret_key',
         'pathao_client_secret', 'pathao_password',
+        'sms_api_key', 'mail_password', 'bdcourier_api_key',
     ];
 
     /** The only settings shared with every page (storefront and admin). */

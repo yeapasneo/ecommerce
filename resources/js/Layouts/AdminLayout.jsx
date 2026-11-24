@@ -14,6 +14,7 @@ const nav = [
         ['/admin/categories', 'folder', 'Categories'],
         ['/admin/brands', 'tag', 'Brands'],
         ['/admin/customers', 'users', 'Customers'],
+        ['/admin/blocked-phones', 'shield', 'Blocked Numbers'],
     ]],
     ['Marketing', [
         ['/admin/coupons', 'percent', 'Coupons'],
@@ -29,7 +30,7 @@ const nav = [
         ['/admin/questions', 'chat', 'Questions', 'questions'],
         ['/admin/messages', 'mail', 'Messages', 'messages'],
     ]],
-    ['Settings', [['/admin/settings', 'settings', 'Store Settings']]],
+    ['Settings', [['/admin/settings', 'settings', 'Store Settings'], ['/admin/system', 'dashboard', 'System Status']]],
 ];
 
 const readCollapsed = () => {

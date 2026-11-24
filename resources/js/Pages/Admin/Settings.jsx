@@ -1,4 +1,4 @@
-import { useForm } from '@inertiajs/react';
+import { Link, useForm } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
 import { Panel, Tabs, Toggle } from '../../Components/Admin/UI';
 import { Field, TextArea, TextInput } from '../../Components/Field';
@@ -11,7 +11,51 @@ const TABS = [
     { value: 'tracking', label: 'Tracking' },
     { value: 'payments', label: 'Payments' },
     { value: 'couriers', label: 'Couriers' },
+    { value: 'notifications', label: 'Notifications' },
+    { value: 'fraud', label: 'Fraud check' },
 ];
+
+const PLACEHOLDERS = ['{name}', '{order}', '{total}', '{status}', '{courier}', '{tracking_url}', '{site}', '{phone}'];
+
+/** SMS length: 160 characters per part (70 when the text has Bangla or other non-GSM characters). */
+function smsParts(text) {
+    const unicode = /[^\x00-\x7F৳]/.test(text) || text.includes('৳');
+    const n = text.length;
+    const single = unicode ? 70 : 160;
+    const multi = unicode ? 67 : 153;
+    return { n, parts: n <= single ? 1 : Math.ceil(n / multi), unicode };
+}
+
+function TestSend({ label, url, field, placeholder, type = 'text' }) {
+    const [value, setValue] = useState('');
+    const [state, setState] = useState(null);
+    const send = async () => {
+        setState({ loading: true });
+        try {
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-XSRF-TOKEN': decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] ?? '') },
+                body: JSON.stringify({ [field]: value }),
+            });
+            const body = await res.json().catch(() => ({}));
+            const err = body.errors ? Object.values(body.errors)[0]?.[0] : null;
+            setState({ ok: res.ok && body.ok, message: err || body.message || 'No answer.' });
+        } catch {
+            setState({ ok: false, message: 'Could not reach the server.' });
+        }
+    };
+    return (
+        <div>
+            <span className="label">{label}</span>
+            <div className="flex flex-wrap gap-2">
+                <input className="input min-w-0 flex-1" type={type} value={value} onChange={(e) => setValue(e.target.value)} placeholder={placeholder} aria-label={label} />
+                <button type="button" onClick={send} disabled={!value || state?.loading} className="btn-outline shrink-0">{state?.loading ? 'Sending…' : 'Send test'}</button>
+            </div>
+            {state && !state.loading && <p className={`mt-1 text-xs ${state.ok ? 'text-green-700' : 'text-red-600'}`} role="status">{state.message}</p>}
+            {!state && <p className="mt-1 text-xs text-slate-500">Uses the saved settings. Save first.</p>}
+        </div>
+    );
+}
 
 const GATEWAYS = [
     {
@@ -91,7 +135,7 @@ function TestConnection({ courier, onStores }) {
     );
 }
 
-export default function Settings({ values, secretsSet, gateways, couriers, urls, ogImageUrl }) {
+export default function Settings({ values, secretsSet, gateways, couriers, notifications, urls, ogImageUrl }) {
     const [pathaoStores, setPathaoStores] = useState(null);
     const initial = useMemo(() => ({ ...values, seo_og_image: null, seo_og_image_remove: false }), [values]);
     const form = useForm(initial);
@@ -115,7 +159,7 @@ export default function Settings({ values, secretsSet, gateways, couriers, urls,
         const keys = Object.keys(e);
         if (!keys.length) return;
         const k = keys[0];
-        const where = /^(steadfast|pathao|courier)_/.test(k) ? 'couriers' : /^(bkash|nagad|sslcommerz|eps|cod)_/.test(k) ? 'payments' : /^(seo_|google_|bing_|facebook_domain)/.test(k) ? 'seo' : /(pixel|gtm|ga_)/.test(k) ? 'tracking' : 'general';
+        const where = /^(fraud_|bdcourier)/.test(k) ? 'fraud' : /^(sms_|mail_|notify_|checkout_otp)/.test(k) ? 'notifications' : /^(steadfast|pathao|courier)_/.test(k) ? 'couriers' : /^(bkash|nagad|sslcommerz|eps|cod)_/.test(k) ? 'payments' : /^(seo_|google_|bing_|facebook_domain)/.test(k) ? 'seo' : /(pixel|gtm|ga_)/.test(k) ? 'tracking' : 'general';
         setTab(where);
     }, [e]);
 
@@ -301,6 +345,112 @@ export default function Settings({ values, secretsSet, gateways, couriers, urls,
                             })}
                         </div>
                         <p className="flex items-start gap-2 text-sm text-slate-500"><Icon name="shield" className="mt-0.5 h-4 w-4 shrink-0" /> Secret keys and passwords are stored encrypted and never shown again. Orders are only marked paid after the payment is confirmed directly with the gateway. Test each gateway in sandbox mode before going live.</p>
+                    </div>
+                )}
+
+                {tab === 'notifications' && (
+                    <div className="space-y-6">
+                        <div className="grid items-start gap-6 xl:grid-cols-2">
+                            <Panel title="SMS Gateway" icon="chat" actions={<span className={`badge rounded-md ring-1 ring-inset ring-current/20 ${notifications.smsReady ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}`}>{notifications.smsReady ? 'Ready' : 'Not set up'}</span>}>
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                    <div className="sm:col-span-2">
+                                        <label className="label" htmlFor="sms-provider">Provider</label>
+                                        <select id="sms-provider" className="input" value={form.data.sms_provider ?? ''} onChange={set('sms_provider')}>
+                                            <option value="">No SMS</option>
+                                            {Object.entries(notifications.smsProviders).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+                                        </select>
+                                    </div>
+                                    {secret('sms_api_key', form.data.sms_provider === 'sslwireless' ? 'API token' : 'API key')}
+                                    {text('sms_sender_id', form.data.sms_provider === 'sslwireless' ? 'SID' : 'Sender ID', { hint: form.data.sms_provider === 'alphasms' ? 'Optional (approved masking name)' : 'Approved sender ID / masking name' })}
+                                    <div className="sm:col-span-2"><TestSend label="Send a test SMS to" url="/admin/settings/test-sms" field="phone" placeholder="01XXXXXXXXX" /></div>
+                                </div>
+                            </Panel>
+                            <Panel title="Email (SMTP)" icon="mail" actions={<span className={`badge rounded-md ring-1 ring-inset ring-current/20 ${notifications.mailReady ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}`}>{notifications.mailReady ? 'Ready' : 'Not set up'}</span>}>
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                    {text('mail_host', 'SMTP host', { placeholder: 'smtp.gmail.com' })}
+                                    <div className="grid grid-cols-2 gap-3">
+                                        {text('mail_port', 'Port', { type: 'number' })}
+                                        <div>
+                                            <label className="label" htmlFor="mail-enc">Security</label>
+                                            <select id="mail-enc" className="input" value={form.data.mail_encryption ?? 'tls'} onChange={set('mail_encryption')}>
+                                                <option value="tls">TLS</option><option value="ssl">SSL</option><option value="none">None</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    {text('mail_username', 'Username', { autoComplete: 'off' })}
+                                    {secret('mail_password', 'Password')}
+                                    {text('mail_from_address', 'From email', { type: 'email', placeholder: 'orders@yourshop.com' })}
+                                    {text('mail_from_name', 'From name', { placeholder: form.data.site_name })}
+                                    {text('notify_admin_email', 'Send new-order alerts to', { type: 'email', hint: 'Shop email that gets an alert for every new order' })}
+                                    <TestSend label="Send a test email to" url="/admin/settings/test-email" field="email" type="email" placeholder="you@example.com" />
+                                </div>
+                            </Panel>
+                        </div>
+
+                        <Panel title="Checkout Verification" icon="shield">
+                            <div className="grid items-start gap-5 lg:grid-cols-2">
+                                <div>
+                                    {toggle('checkout_otp', 'Verify mobile number with an SMS code', 'Customers must enter a 6-digit code before placing an order. Stops most fake cash-on-delivery orders. Needs a working SMS gateway.')}
+                                    {flag(form.data.checkout_otp) && !notifications.smsReady && <p className="mt-2 text-xs text-amber-700">SMS isn't set up yet, so checkout won't ask for a code until it is.</p>}
+                                </div>
+                                <TextArea label="Code message" rows={2} value={form.data.sms_template_otp ?? ''} onChange={set('sms_template_otp')} error={e.sms_template_otp} hint="Must include {code}." />
+                            </div>
+                        </Panel>
+
+                        <Panel title="Customer Messages" icon="megaphone" bodyClassName="pb-2">
+                            <p className="-mt-2 px-6 pb-4 text-sm text-slate-500">
+                                Choose which updates go out by SMS and email. Emails use a standard layout; SMS text is yours to edit. Placeholders: {PLACEHOLDERS.map((p) => <code key={p} className="mx-0.5 rounded bg-slate-100 px-1 text-xs">{p}</code>)}
+                            </p>
+                            <div className="divide-y divide-slate-100 border-t border-slate-100">
+                                {Object.entries(notifications.events).map(([ev, label]) => {
+                                    const tpl = form.data[`sms_template_${ev}`] ?? '';
+                                    const len = smsParts(tpl);
+                                    return (
+                                        <div key={ev} className="grid gap-3 px-6 py-4 lg:grid-cols-[220px_1fr]">
+                                            <div className="space-y-2">
+                                                <p className="font-medium text-slate-900">{label}</p>
+                                                <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="h-4 w-4 accent-primary-600" checked={flag(form.data[`notify_sms_${ev}`])} onChange={(x) => form.setData(`notify_sms_${ev}`, x.target.checked ? '1' : '0')} /> SMS</label>
+                                                <label className="flex items-center gap-2 text-sm"><input type="checkbox" className="h-4 w-4 accent-primary-600" checked={flag(form.data[`notify_email_${ev}`])} onChange={(x) => form.setData(`notify_email_${ev}`, x.target.checked ? '1' : '0')} /> Email</label>
+                                            </div>
+                                            <div>
+                                                <textarea className="input" rows={2} value={tpl} onChange={set(`sms_template_${ev}`)} aria-label={`${label} SMS text`} />
+                                                <p className={`mt-1 text-xs ${len.parts > 2 ? 'text-amber-700' : 'text-slate-500'}`}>{len.n} characters · {len.parts} SMS part{len.parts > 1 ? 's' : ''} before placeholders are filled{len.unicode ? ' · Bangla/Unicode: 70 per part' : ''}</p>
+                                                {e[`sms_template_${ev}`] && <p className="mt-1 text-xs text-red-600">{e[`sms_template_${ev}`]}</p>}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </Panel>
+                    </div>
+                )}
+
+                {tab === 'fraud' && (
+                    <div className="grid items-start gap-6 xl:grid-cols-2">
+                        <Panel title="Courier History Check" icon="search">
+                            <p className="-mt-2 mb-4 text-sm text-slate-500">Every order shows the customer's history in this shop (delivered vs. cancelled). Add a BD Courier API key to also see their record across Steadfast, Pathao, RedX and other couriers.</p>
+                            <div className="grid gap-4">
+                                <div>
+                                    <label className="label" htmlFor="fraud-provider">Courier history source</label>
+                                    <select id="fraud-provider" className="input" value={form.data.fraud_provider ?? ''} onChange={set('fraud_provider')}>
+                                        <option value="">This shop's orders only</option>
+                                        <option value="bdcourier">BD Courier (bdcourier.com)</option>
+                                    </select>
+                                </div>
+                                {form.data.fraud_provider === 'bdcourier' && secret('bdcourier_api_key', 'BD Courier API key')}
+                            </div>
+                        </Panel>
+                        <Panel title="Blocked Numbers" icon="shield">
+                            <p className="-mt-2 mb-4 text-sm text-slate-500">Numbers you mark as fraud (from an order page or <Link href="/admin/blocked-phones" className="font-medium text-primary-700 hover:underline">Blocked Numbers</Link>) are handled like this at checkout:</p>
+                            <div className="grid gap-2">
+                                {[['cod', 'Block cash on delivery only', 'They can still order if they pay online.'], ['all', 'Block all orders', 'They are asked to call the shop instead.']].map(([v, l, d]) => (
+                                    <label key={v} className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 ${form.data.fraud_block_mode === v ? 'border-primary-600 bg-primary-50' : 'border-slate-200'}`}>
+                                        <input type="radio" name="fraud_block_mode" className="mt-1 accent-primary-600" checked={form.data.fraud_block_mode === v} onChange={() => form.setData('fraud_block_mode', v)} />
+                                        <span><span className="block font-medium text-slate-900">{l}</span><span className="text-xs text-slate-500">{d}</span></span>
+                                    </label>
+                                ))}
+                            </div>
+                        </Panel>
                     </div>
                 )}
 

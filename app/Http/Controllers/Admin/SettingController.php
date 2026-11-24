@@ -4,13 +4,19 @@ namespace App\Http\Controllers\Admin;
 
 use App\Couriers\CourierManager;
 use App\Http\Controllers\Controller;
+use App\Messaging\MailConfig;
+use App\Messaging\OrderNotifier;
+use App\Messaging\Sms\SmsException;
+use App\Messaging\Sms\SmsManager;
 use App\Models\ContactMessage;
 use App\Models\NewsletterSubscriber;
 use App\Models\Order;
 use App\Models\Setting;
 use App\Payments\PaymentManager;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 
 class SettingController extends Controller
@@ -44,6 +50,12 @@ class SettingController extends Controller
                 'configured' => $couriers->driver($k)->isConfigured(),
                 'live' => $couriers->driver($k)->isEnabled(),
             ]]),
+            'notifications' => [
+                'events' => OrderNotifier::EVENTS,
+                'smsProviders' => SmsManager::PROVIDERS,
+                'smsReady' => app(SmsManager::class)->isConfigured(),
+                'mailReady' => MailConfig::isConfigured(),
+            ],
             'ogImageUrl' => $all['seo_og_image'] ? media_url($all['seo_og_image']) : null,
         ]);
     }
@@ -51,7 +63,8 @@ class SettingController extends Controller
     public function update(Request $request, PaymentManager $payments, CourierManager $couriers)
     {
         $flags = ['seo_noindex', 'cod_enabled', 'bkash_enabled', 'bkash_sandbox', 'nagad_enabled', 'nagad_sandbox', 'sslcommerz_enabled', 'sslcommerz_sandbox', 'eps_enabled', 'eps_sandbox',
-            'courier_sync_status', 'steadfast_enabled', 'pathao_enabled', 'pathao_sandbox'];
+            'courier_sync_status', 'steadfast_enabled', 'pathao_enabled', 'pathao_sandbox', 'checkout_otp',
+            ...collect(OrderNotifier::EVENTS)->keys()->flatMap(fn ($e) => ["notify_sms_{$e}", "notify_email_{$e}"])->all()];
         $rules = collect(Setting::DEFAULTS)->map(fn () => ['nullable', 'string', 'max:1000'])->all();
         foreach (['delivery_charge_inside', 'delivery_charge_outside', 'express_delivery_charge', 'free_delivery_over'] as $k) {
             $rules[$k] = ['required', 'numeric', 'min:0'];
@@ -70,6 +83,17 @@ class SettingController extends Controller
         $rules['nagad_private_key'] = ['nullable', 'string', 'max:5000'];
         $rules['seo_og_image'] = ['nullable', 'image', 'max:2048'];
         $rules['pathao_delivery_type'] = ['nullable', 'in:48,12'];
+        $rules['sms_provider'] = ['nullable', Rule::in(array_keys(SmsManager::PROVIDERS))];
+        $rules['notify_admin_email'] = ['nullable', 'email', 'max:255'];
+        $rules['mail_port'] = ['nullable', 'integer', 'between:1,65535'];
+        $rules['mail_encryption'] = ['nullable', 'in:tls,ssl,none'];
+        $rules['mail_from_address'] = ['nullable', 'email', 'max:255'];
+        $rules['fraud_provider'] = ['nullable', 'in:bdcourier'];
+        $rules['fraud_block_mode'] = ['nullable', 'in:cod,all'];
+        foreach (array_keys(OrderNotifier::EVENTS) as $e) {
+            $rules["sms_template_{$e}"] = ['nullable', 'string', 'max:500'];
+        }
+        $rules['sms_template_otp'] = ['nullable', 'string', 'max:300', 'regex:/\{code\}/'];
         $rules['pathao_item_weight'] = ['nullable', 'numeric', 'min:0.5', 'max:10'];
         $rules['pathao_store_id'] = ['nullable', 'integer'];
         $rules['steadfast_webhook_token'] = ['nullable', 'string', 'min:16', 'max:100'];
@@ -80,6 +104,7 @@ class SettingController extends Controller
             'gtm_container_id.regex' => 'Use the container ID, e.g. GTM-ABC1234.',
             'ga_measurement_id.regex' => 'Use the GA4 measurement ID, e.g. G-ABC123XYZ.',
             'facebook_pixel_id.regex' => 'The Pixel ID is a number, e.g. 123456789012345.',
+            'sms_template_otp.regex' => 'The code message must include {code}.',
         ]);
 
         foreach ($flags as $k) {
@@ -115,6 +140,33 @@ class SettingController extends Controller
         }
 
         return back()->with('success', 'Settings saved.');
+    }
+
+    public function testSms(Request $request, SmsManager $sms)
+    {
+        $data = $request->validate(['phone' => ['required', 'string', 'max:30']]);
+        try {
+            $sms->send($data['phone'], 'Test message from '.Setting::get('site_name').'. SMS is working.');
+        } catch (SmsException $e) {
+            return response()->json(['ok' => false, 'message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['ok' => true, 'message' => 'Sent. Check the phone.']);
+    }
+
+    public function testEmail(Request $request)
+    {
+        $data = $request->validate(['email' => ['required', 'email']]);
+        try {
+            MailConfig::apply();
+            Mail::raw('Test email from '.Setting::get('site_name').'. Email is working.', fn ($m) => $m->to($data['email'])->subject('Test email'));
+        } catch (\Throwable $e) {
+            return response()->json(['ok' => false, 'message' => 'Could not send: '.$e->getMessage()], 422);
+        }
+
+        return response()->json(['ok' => true, 'message' => in_array(config('mail.default'), ['log', 'array'], true)
+            ? 'No mail server is set, so the email was only written to the log. Fill in the SMTP details.'
+            : 'Sent. Check the inbox (and spam folder).']);
     }
 
     public function messages()
