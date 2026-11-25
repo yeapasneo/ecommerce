@@ -451,6 +451,19 @@ export default function Settings({ values, secretsSet, gateways, couriers, notif
                             </div>
                         </Panel>
 
+                        <Panel title="Product Alerts" icon="bell">
+                            <div className="grid items-start gap-5 lg:grid-cols-2">
+                                <div className="space-y-4">
+                                    {toggle('back_in_stock_enabled', '“Notify me” on out-of-stock products', 'Shoppers leave a phone or email and get one message when it is back in stock.')}
+                                    <TextArea label="Back-in-stock SMS" rows={2} value={form.data.sms_template_back_in_stock ?? ''} onChange={set('sms_template_back_in_stock')} error={e.sms_template_back_in_stock} hint="Placeholders: {product}, {link}, {site}" />
+                                </div>
+                                <div className="space-y-4">
+                                    {toggle('price_drop_alerts', 'Price-drop alerts for wishlists', 'When a product’s price drops by 2% or more, people who wishlisted it get a message (at most once a week per product).')}
+                                    <TextArea label="Price-drop SMS" rows={2} value={form.data.sms_template_price_drop ?? ''} onChange={set('sms_template_price_drop')} error={e.sms_template_price_drop} hint="Placeholders: {name}, {product}, {price}, {old}, {link}, {site}" />
+                                </div>
+                            </div>
+                        </Panel>
+
                         <Panel title="Returns & Warranty" icon="refresh">
                             <div className="grid items-start gap-5 lg:grid-cols-2">
                                 <div className="space-y-4">

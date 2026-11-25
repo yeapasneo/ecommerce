@@ -6,8 +6,10 @@ use App\Models\Product;
 use App\Models\Question;
 use App\Models\Review;
 use App\Models\Setting;
+use App\Services\ProductAlerts;
 use App\Support\Analytics;
 use App\Support\Emi;
+use App\Support\Phone;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -44,6 +46,7 @@ class ProductController extends Controller
                     ])->values()
                 : [],
             'flash' => $product->flashSale(),
+            'notifyEnabled' => Setting::enabled('back_in_stock_enabled'),
             'emi' => Emi::plans((float) $product->price),
             'specGroups' => $product->specs->groupBy('group')->map(fn ($g, $name) => ['group' => $name, 'items' => $g->values()])->values(),
             'reviews' => $reviews,
@@ -141,5 +144,23 @@ class ProductController extends Controller
         Question::create($data + ['product_id' => $product->id, 'user_id' => $request->user()->id]);
 
         return back()->with('success', 'Your question has been submitted. We will answer it soon.');
+    }
+
+    /** "Notify me when it's back": phone or email (signed-in shoppers can use their account's). */
+    public function notifyMe(Request $request, Product $product, ProductAlerts $alerts)
+    {
+        abort_unless($product->is_active && Setting::enabled('back_in_stock_enabled'), 404);
+        $data = $request->validate([
+            'variant_id' => ['nullable', 'integer'],
+            'phone' => ['nullable', 'required_without:email', 'string', 'max:30'],
+            'email' => ['nullable', 'required_without:phone', 'email', 'max:255'],
+        ], ['phone.required_without' => 'Enter your mobile number or email.', 'email.required_without' => 'Enter your mobile number or email.']);
+        if (! empty($data['phone']) && ! Phone::isValid($data['phone'])) {
+            return back()->withErrors(['phone' => 'Enter a valid Bangladeshi mobile number.']);
+        }
+        $variant = ! empty($data['variant_id']) ? $product->variants()->findOrFail($data['variant_id']) : null;
+        $alerts->subscribe($product, $variant, $data['phone'] ?? null, $data['email'] ?? null, $request->user());
+
+        return back()->with('success', "We'll let you know as soon as it's back in stock.");
     }
 }

@@ -84,7 +84,33 @@ function EmiBox({ emi }) {
     );
 }
 
-export default function Show({ product, breadcrumbs, specGroups, reviews, rating, questions, related, inWishlist, inCompare, hasReviewed, variants = [], flash = null, emi = null }) {
+/** "Tell me when it's back in stock" — phone or email. */
+function NotifyMe({ product, variant }) {
+    const { auth } = usePage().props;
+    const [open, setOpen] = useState(false);
+    const form = useForm({ variant_id: variant?.id ?? null, phone: auth.user?.phone ?? '', email: auth.user && !auth.user.phone ? auth.user.email : '' });
+    useEffect(() => form.setData('variant_id', variant?.id ?? null), [variant?.id]);
+    if (!open) {
+        return (
+            <button type="button" onClick={() => setOpen(true)} className="btn-outline mt-3 py-2.5">
+                <Icon name="bell" className="h-4 w-4" /> {t('Notify me when available')}
+            </button>
+        );
+    }
+    return (
+        <form onSubmit={(e) => { e.preventDefault(); form.post(`/product/${product.id}/notify`, { preserveScroll: true, onSuccess: () => setOpen(false) }); }} className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
+            <p className="mb-2 text-sm text-slate-600">{t('We will send you one SMS or email when it is back in stock.')}</p>
+            <div className="flex flex-wrap gap-2">
+                <input className="input h-10 min-w-0 flex-1" type="tel" value={form.data.phone} onChange={(e) => form.setData('phone', e.target.value)} placeholder={t('Mobile number')} aria-label={t('Mobile number')} />
+                <input className="input h-10 min-w-0 flex-1" type="email" value={form.data.email} onChange={(e) => form.setData('email', e.target.value)} placeholder={t('or email')} aria-label={t('Email')} />
+                <button disabled={form.processing} className="btn-primary h-10">{t('Notify me')}</button>
+            </div>
+            {(form.errors.phone || form.errors.email) && <p className="mt-1 text-xs text-red-600">{form.errors.phone || form.errors.email}</p>}
+        </form>
+    );
+}
+
+export default function Show({ product, breadcrumbs, specGroups, reviews, rating, questions, related, inWishlist, inCompare, hasReviewed, variants = [], flash = null, emi = null, notifyEnabled = false }) {
     const { auth, settings } = usePage().props;
     const [qty, setQty] = useState(1);
     const [tab, setTab] = useState('specification');
@@ -194,6 +220,7 @@ export default function Show({ product, breadcrumbs, specGroups, reviews, rating
                         <button disabled={!canBuy} onClick={() => add(true)} className="btn-primary px-8 py-2.5">{product.stock_status === 'pre_order' ? t('Pre Order') : canBuy ? t('Buy Now') : stockLabel}</button>
                         <button disabled={!canBuy} onClick={() => add(false)} className="btn-accent py-2.5"><Icon name="cart" className="h-4 w-4" /> {t('Add to Cart')}</button>
                     </div>
+                    {!canBuy && notifyEnabled && <NotifyMe product={product} variant={variant} />}
                     <div className="mt-4 flex gap-4 text-sm">
                         <button onClick={() => requireLogin(() => router.post('/account/wishlist', { product_id: product.id }, { preserveScroll: true }))} className={`flex items-center gap-1 ${inWishlist ? 'text-red-600' : 'text-slate-600 hover:text-accent-600'}`}>
                             <Icon name="heart" className="h-4 w-4" fill={inWishlist ? 'currentColor' : 'none'} /> {inWishlist ? t('In Wishlist') : t('Add to Wishlist')}

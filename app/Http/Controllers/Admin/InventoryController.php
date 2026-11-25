@@ -9,6 +9,7 @@ use App\Models\ProductVariant;
 use App\Models\PurchaseOrder;
 use App\Models\ReturnRequest;
 use App\Models\Setting;
+use App\Models\StockAlert;
 use App\Models\StockMovement;
 use App\Services\Stock;
 use Illuminate\Http\Request;
@@ -42,7 +43,7 @@ class InventoryController extends Controller
 
     public function index(Request $request)
     {
-        $tab = $request->tab === 'history' ? 'history' : 'low';
+        $tab = in_array($request->tab, ['history', 'waiting'], true) ? $request->tab : 'low';
         $sold = DB::table('order_items')->join('orders', 'orders.id', '=', 'order_items.order_id')
             ->where('orders.created_at', '>=', now()->subDays(30))->where('orders.status', '!=', 'cancelled')
             ->selectRaw("order_items.product_id || '-' || coalesce(order_items.variant_id, 0) as k, sum(order_items.quantity) as qty")->groupBy('k')->pluck('qty', 'k');
@@ -57,6 +58,9 @@ class InventoryController extends Controller
                 ->when($request->product, fn ($q, $id) => $q->where('product_id', $id))
                 ->latest('id')->paginate($this->perPage())->withQueryString()
                 ->through(fn ($m) => $m->toArray() + ['reference_label' => $this->referenceLabel($m)]) : null,
+            'waiting' => $tab === 'waiting' ? StockAlert::where('type', 'back_in_stock')->whereNull('notified_at')
+                ->selectRaw('product_id, variant_id, count(*) as people, max(created_at) as latest')->groupBy('product_id', 'variant_id')->orderByDesc('people')->limit(300)->get()
+                ->load('product:id,name,sku,stock,image', 'variant:id,name,stock') : [],
             'reasons' => StockMovement::REASONS,
             'filters' => $request->only('reason', 'search', 'product'),
         ]);

@@ -71,7 +71,7 @@ class SettingController extends Controller
     public function update(Request $request, PaymentManager $payments, CourierManager $couriers)
     {
         $flags = ['seo_noindex', 'cod_enabled', 'bkash_enabled', 'bkash_sandbox', 'nagad_enabled', 'nagad_sandbox', 'sslcommerz_enabled', 'sslcommerz_sandbox', 'eps_enabled', 'eps_sandbox',
-            'courier_sync_status', 'steadfast_enabled', 'pathao_enabled', 'pathao_sandbox', 'checkout_otp', 'emi_enabled', 'abandoned_cart_enabled', 'ai_chat_enabled', 'ai_writer_auto', 'low_stock_alerts', 'returns_enabled', 'notify_returns',
+            'courier_sync_status', 'steadfast_enabled', 'pathao_enabled', 'pathao_sandbox', 'checkout_otp', 'emi_enabled', 'abandoned_cart_enabled', 'ai_chat_enabled', 'ai_writer_auto', 'low_stock_alerts', 'returns_enabled', 'notify_returns', 'back_in_stock_enabled', 'price_drop_alerts',
             ...collect(OrderNotifier::EVENTS)->keys()->flatMap(fn ($e) => ["notify_sms_{$e}", "notify_email_{$e}"])->all()];
         $rules = collect(Setting::DEFAULTS)->map(fn () => ['nullable', 'string', 'max:1000'])->all();
         foreach (['delivery_charge_inside', 'delivery_charge_outside', 'express_delivery_charge', 'free_delivery_over'] as $k) {

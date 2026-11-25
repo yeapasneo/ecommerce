@@ -42,6 +42,7 @@ Route::delete('/cart/coupon/remove', [CartController::class, 'removeCoupon'])->n
 
 Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
 Route::post('/checkout/quote', [CheckoutController::class, 'quote'])->name('checkout.quote');
+Route::post('/product/{product}/notify', [ProductController::class, 'notifyMe'])->name('product.notify')->middleware('throttle:10,1');
 Route::post('/assistant', [AssistantController::class, 'reply'])->name('assistant')->middleware('throttle:12,1');
 Route::post('/checkout/contact', [CheckoutController::class, 'contact'])->name('checkout.contact')->middleware('throttle:30,1');
 Route::get('/cart/recover/{token}', function (string $token, AbandonedCarts $carts) {

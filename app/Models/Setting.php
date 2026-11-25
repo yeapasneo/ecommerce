@@ -98,6 +98,12 @@ class Setting extends Model
         'return_days' => '7',
         'notify_returns' => '1',
 
+        // Product alerts
+        'back_in_stock_enabled' => '1',
+        'price_drop_alerts' => '1',
+        'sms_template_back_in_stock' => '{product} is back in stock at {site}. Order now: {link}',
+        'sms_template_price_drop' => 'Hi {name}, {product} on your wishlist is now Tk {price} (was Tk {old}) at {site}: {link}',
+
         // Inventory
         'low_stock_threshold' => '3',
         'low_stock_alerts' => '0',

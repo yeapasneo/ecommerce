@@ -18,7 +18,7 @@ function SetStock({ row }) {
     );
 }
 
-export default function Inventory({ tab, threshold, low, movements, reasons, filters }) {
+export default function Inventory({ tab, threshold, low, movements, waiting = [], reasons, filters }) {
     const [search, setSearch] = useState(filters.search ?? '');
     const go = (params) => router.get('/admin/inventory', cleanParams({ tab, ...filters, ...params }), { preserveState: true, preserveScroll: true });
 
@@ -29,7 +29,7 @@ export default function Inventory({ tab, threshold, low, movements, reasons, fil
             actions={<Link href="/admin/purchase-orders/create" className="btn-primary"><Icon name="plus" className="h-4 w-4" /> New purchase order</Link>}
         >
             <div className="panel mb-4 flex flex-wrap items-center gap-3 px-4 py-3">
-                <div className="mr-auto"><Tabs value={tab} onChange={(v) => router.get('/admin/inventory', { tab: v })} tabs={[{ value: 'low', label: 'Low stock', count: tab === 'low' ? low.length : undefined }, { value: 'history', label: 'Stock history' }]} /></div>
+                <div className="mr-auto"><Tabs value={tab} onChange={(v) => router.get('/admin/inventory', { tab: v })} tabs={[{ value: 'low', label: 'Low stock', count: tab === 'low' ? low.length : undefined }, { value: 'waiting', label: 'Waiting customers' }, { value: 'history', label: 'Stock history' }]} /></div>
                 {tab === 'history' && (
                     <>
                         <select className="input h-10 w-auto" value={filters.reason ?? ''} onChange={(e) => go({ reason: e.target.value || null })} aria-label="Reason">
@@ -66,6 +66,29 @@ export default function Inventory({ tab, threshold, low, movements, reasons, fil
                                                     <Link href={`/admin/inventory?tab=history&product=${r.product_id}`} className="icon-btn h-8 w-8" aria-label="Stock history"><Icon name="clock" className="h-4 w-4" /></Link>
                                                 </div>
                                             </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {tab === 'waiting' && (
+                <div className="panel overflow-hidden">
+                    {waiting.length === 0 ? <EmptyState icon="bell" title="Nobody is waiting" text="Shoppers who tap “Notify me” on an out-of-stock product show up here. They're told automatically when it's back." /> : (
+                        <div className="overflow-x-auto">
+                            <table className="table-admin min-w-[640px]">
+                                <thead><tr><th className="pl-6">Product</th><th className="text-right">Waiting</th><th className="text-right">In stock</th><th>Latest request</th><th className="pr-6" /></tr></thead>
+                                <tbody>
+                                    {waiting.map((w) => (
+                                        <tr key={`${w.product_id}-${w.variant_id ?? 0}`}>
+                                            <td className="pl-6"><Link href={`/admin/products/${w.product_id}/edit`} className="font-medium hover:text-primary-700">{w.product?.name}{w.variant && <span className="text-primary-700"> · {w.variant.name}</span>}</Link></td>
+                                            <td className="text-right font-semibold tabular-nums">{w.people}</td>
+                                            <td className="text-right tabular-nums">{w.variant ? w.variant.stock : w.product?.stock}</td>
+                                            <td className="text-xs text-slate-500">{dateTime(w.latest)}</td>
+                                            <td className="pr-6 text-right"><Link href={`/admin/purchase-orders/create?product=${w.product_id}${w.variant_id ? `&variant=${w.variant_id}` : ''}`} className="btn-outline btn-sm">Reorder</Link></td>
                                         </tr>
                                     ))}
                                 </tbody>

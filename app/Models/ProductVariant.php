@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\LogsActivity;
+use App\Services\ProductAlerts;
 use App\Services\Stock;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -57,6 +58,9 @@ class ProductVariant extends Model
     {
         // Stock history (see App\Services\Stock).
         static::created(fn (self $m) => Stock::watch($m, true));
-        static::updated(fn (self $m) => Stock::watch($m));
+        static::updated(function (self $m) {
+            Stock::watch($m);
+            ProductAlerts::watch($m); // back in stock / price drop
+        });
     }
 }
