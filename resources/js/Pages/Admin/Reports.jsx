@@ -55,7 +55,7 @@ function Chart({ series }) {
     );
 }
 
-function Breakdown({ title, rows, unit = 'orders', total }) {
+function Breakdown({ title, rows, unit = 'orders', total, by = 'revenue' }) {
     return (
         <Panel title={title} bodyClassName="px-6 pb-5">
             {rows.length === 0 ? <p className="text-sm text-slate-500">No sales in this period.</p> : (
@@ -64,9 +64,14 @@ function Breakdown({ title, rows, unit = 'orders', total }) {
                         <li key={r.name ?? 'none'}>
                             <div className="mb-1 flex justify-between gap-3 text-sm">
                                 <span className="truncate">{r.name ? titleCase(r.name) : '—'}</span>
-                                <span className="shrink-0 font-medium tabular-nums">{money(r.revenue)} <span className="font-normal text-slate-500">· {r[unit] ?? r.orders} {unit === 'qty' ? 'sold' : 'orders'}</span></span>
+                                <span className="shrink-0 font-medium tabular-nums">{money(by === 'profit' ? r.profit : r.revenue)} <span className="font-normal text-slate-500">· {r[unit] ?? r.orders} {unit === 'qty' ? 'sold' : 'orders'}</span></span>
                             </div>
-                            <div className="h-1.5 rounded-full bg-slate-100"><div className="h-1.5 rounded-full bg-primary-500" style={{ width: `${total ? (r.revenue / total) * 100 : 0}%` }} /></div>
+                            <div className="h-1.5 rounded-full bg-slate-100"><div className={`h-1.5 rounded-full ${by === 'profit' ? 'bg-green-500' : 'bg-primary-500'}`} style={{ width: `${total ? (Math.max(0, r[by]) / total) * 100 : 0}%` }} /></div>
+                            {r.profit !== undefined && (
+                                <p className="mt-0.5 text-xs text-slate-500">
+                                    {r.profit === null ? 'Profit: add cost prices to see it' : <>{by === 'profit' ? `Sales ${money(r.revenue)}` : `Profit ${money(r.profit)}`} · <span className={r.margin < 0 ? 'text-red-600' : 'text-green-700'}>{r.margin}% margin</span></>}
+                                </p>
+                            )}
                         </li>
                     ))}
                 </ul>
@@ -75,7 +80,7 @@ function Breakdown({ title, rows, unit = 'orders', total }) {
     );
 }
 
-export default function Reports({ range, totals, previous, cancelled, newCustomers, series, topProducts, categories, payments, sources, cities, statuses }) {
+export default function Reports({ range, totals, previous, cancelled, newCustomers, series, topProducts, profitable = [], categories, payments, sources, cities, statuses }) {
     const [from, setFrom] = useState(range.from);
     const [to, setTo] = useState(range.to);
     const go = (f, t) => router.get('/admin/reports', { from: f, to: t }, { preserveScroll: true });
@@ -84,7 +89,10 @@ export default function Reports({ range, totals, previous, cancelled, newCustome
     const cards = [
         ['Revenue', money(totals.revenue), 'receipt', <Change key="r" now={totals.revenue} before={previous.revenue} />],
         ['Orders', totals.orders.toLocaleString(), 'cart', <Change key="o" now={totals.orders} before={previous.orders} />],
-        ['Average order', money(totals.aov), 'percent', <Change key="a" now={totals.aov} before={previous.aov} />],
+        ['Gross profit', money(totals.profit), 'percent', totals.costCoverage === 0
+            ? <span key="p" className="text-xs text-slate-500">Add cost prices to products to see profit</span>
+            : <span key="p" className="text-xs text-slate-500">{totals.margin}% margin{totals.costCoverage < 100 && ` · cost known for ${totals.costCoverage}% of sales`}</span>],
+        ['Average order', money(totals.aov), 'receipt', <Change key="a" now={totals.aov} before={previous.aov} />],
         ['Items sold', totals.items.toLocaleString(), 'box', <span key="c" className="text-xs text-slate-500">{totals.customers} customers · {newCustomers} new sign-ups</span>],
     ];
 
@@ -113,7 +121,7 @@ export default function Reports({ range, totals, previous, cancelled, newCustome
                 </form>
             </div>
 
-            <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
                 {cards.map(([label, value, icon, sub]) => (
                     <div key={label} className="panel p-5">
                         <div className="flex items-center gap-3">
@@ -130,6 +138,7 @@ export default function Reports({ range, totals, previous, cancelled, newCustome
                 <Panel title="Revenue per day"><Chart series={series} /></Panel>
                 <Panel title="Money" bodyClassName="px-6 pb-5">
                     <dl className="grid grid-cols-[1fr_auto] gap-y-2 text-sm tabular-nums">
+                        <dt className="text-slate-500">Cost of goods sold</dt><dd className="text-right">{money(totals.cost)}</dd>
                         <dt className="text-slate-500">Discounts given</dt><dd className="text-right">{money(totals.discount)}</dd>
                         <dt className="text-slate-500">VAT collected</dt><dd className="text-right">{money(totals.tax)}</dd>
                         <dt className="text-slate-500">Delivery charges</dt><dd className="text-right">{money(totals.delivery)}</dd>
@@ -145,6 +154,7 @@ export default function Reports({ range, totals, previous, cancelled, newCustome
 
             <div className="grid items-start gap-6 lg:grid-cols-2">
                 <Breakdown title="Top products" rows={topProducts} unit="qty" total={topProducts[0]?.revenue} />
+                <Breakdown title="Most profitable products" rows={profitable} unit="qty" by="profit" total={profitable[0]?.profit} />
                 <Breakdown title="Top categories" rows={categories} unit="qty" total={categories[0]?.revenue} />
                 <Breakdown title="Payment methods" rows={payments} total={totals.revenue} />
                 <Breakdown title="Order sources" rows={sources} total={totals.revenue} />

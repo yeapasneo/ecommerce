@@ -25,8 +25,11 @@ class Product extends Model
     protected $fillable = [
         'category_id', 'brand_id', 'name', 'slug', 'sku', 'model', 'price', 'regular_price', 'stock', 'stock_status',
         'key_features', 'description', 'image', 'warranty_months', 'is_active', 'is_featured', 'meta_title', 'meta_description', 'meta_keywords',
-        'has_variants', 'description_bn', 'key_features_bn',
+        'has_variants', 'description_bn', 'key_features_bn', 'cost_price',
     ];
+
+    /** Never sent to shoppers; the admin product form makes it visible. */
+    protected $hidden = ['cost_price'];
 
     /** Storefront prices include running flash sales; the admin panel turns this off to edit real prices. */
     public static bool $flashPrices = true;
@@ -36,6 +39,7 @@ class Product extends Model
         'key_features_bn' => 'array',
         'price' => 'float',
         'regular_price' => 'float',
+        'cost_price' => 'float',
         'is_active' => 'boolean',
         'is_featured' => 'boolean',
         'has_variants' => 'boolean',

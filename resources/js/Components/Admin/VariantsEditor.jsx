@@ -38,6 +38,7 @@ export default function VariantsEditor({ variants, onChange, errors, baseSku, ba
             sku: baseSku ? `${baseSku}-${Object.values(options).join('-').replace(/[^A-Za-z0-9]+/g, '').toUpperCase()}`.slice(0, 100) : '',
             price: basePrice || '',
             regular_price: '',
+            cost_price: '',
             stock: 0,
             is_active: true,
             _new: i,
@@ -82,7 +83,7 @@ export default function VariantsEditor({ variants, onChange, errors, baseSku, ba
             {variants.length > 0 && (
                 <div className="mt-5 overflow-x-auto">
                     <table className="table-admin min-w-[720px]">
-                        <thead><tr><th className="pl-0">Variant</th><th>SKU</th><th className="w-32">Price (৳)</th><th className="w-32">Regular (৳)</th><th className="w-24">Stock</th><th className="w-20">On sale</th><th className="w-px" /></tr></thead>
+                        <thead><tr><th className="pl-0">Variant</th><th>SKU</th><th className="w-32">Price (৳)</th><th className="w-32">Regular (৳)</th><th className="w-28">Cost (৳)</th><th className="w-24">Stock</th><th className="w-20">On sale</th><th className="w-px" /></tr></thead>
                         <tbody>
                             {variants.map((v, i) => (
                                 <tr key={v.id ?? `n${key(v.options)}`}>
@@ -93,6 +94,7 @@ export default function VariantsEditor({ variants, onChange, errors, baseSku, ba
                                         {err(i, 'price') && <p className="mt-1 text-xs text-red-600">{err(i, 'price')}</p>}
                                     </td>
                                     <td><input className="input h-9 py-1" type="number" min="0" step="1" value={v.regular_price ?? ''} onChange={(e) => setVariant(i, { regular_price: e.target.value })} aria-label="Variant regular price" /></td>
+                                    <td><input className="input h-9 py-1" type="number" min="0" step="0.01" value={v.cost_price ?? ''} onChange={(e) => setVariant(i, { cost_price: e.target.value })} aria-label="Variant cost price" placeholder="—" /></td>
                                     <td><input className="input h-9 py-1" type="number" min="0" step="1" value={v.stock} onChange={(e) => setVariant(i, { stock: e.target.value })} aria-label="Variant stock" /></td>
                                     <td><input type="checkbox" className="h-4 w-4 accent-primary-600" checked={!!v.is_active} onChange={(e) => setVariant(i, { is_active: e.target.checked })} aria-label="Variant on sale" /></td>
                                     <td><button type="button" onClick={() => onChange(variants.filter((_, j) => j !== i))} className="icon-btn h-9 w-9 hover:text-red-600" aria-label="Remove variant"><Icon name="x" className="h-4 w-4" /></button></td>

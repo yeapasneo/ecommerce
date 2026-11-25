@@ -85,7 +85,7 @@ class ProductController extends Controller
     public function edit(Product $product)
     {
         return Inertia::render('Admin/Products/Form', [
-            'product' => $product->load('images', 'specs', 'variants'),
+            'product' => $product->load('images', 'specs', 'variants')->makeVisible('cost_price')->setRelation('variants', $product->variants->each->makeVisible('cost_price')),
             ...$this->options(),
         ]);
     }
@@ -141,6 +141,7 @@ class ProductController extends Controller
                 'sku' => ($row['sku'] ?? null) ?: null,
                 'price' => (float) $row['price'],
                 'regular_price' => isset($row['regular_price']) && $row['regular_price'] !== '' ? (float) $row['regular_price'] : null,
+                'cost_price' => isset($row['cost_price']) && $row['cost_price'] !== '' ? (float) $row['cost_price'] : null,
                 'stock' => (int) $row['stock'],
                 'is_active' => filter_var($row['is_active'] ?? true, FILTER_VALIDATE_BOOLEAN),
                 'sort_order' => $i,
@@ -179,6 +180,7 @@ class ProductController extends Controller
             'brand_id' => ['nullable', 'exists:brands,id'],
             'price' => ['required', 'numeric', 'min:0'],
             'regular_price' => ['nullable', 'numeric', 'min:0'],
+            'cost_price' => ['nullable', 'numeric', 'min:0'],
             'stock' => ['required', 'integer', 'min:0'],
             'stock_status' => ['required', Rule::in(array_keys(Product::STOCK_STATUSES))],
             'warranty_months' => ['nullable', 'integer', 'min:0'],
@@ -207,6 +209,7 @@ class ProductController extends Controller
             'variants.*.sku' => ['nullable', 'string', 'max:100'],
             'variants.*.price' => ['required_with:variants', 'numeric', 'min:0'],
             'variants.*.regular_price' => ['nullable', 'numeric', 'min:0'],
+            'variants.*.cost_price' => ['nullable', 'numeric', 'min:0'],
             'variants.*.stock' => ['required_with:variants', 'integer', 'min:0'],
             'variants.*.is_active' => ['nullable', 'boolean'],
         ], [

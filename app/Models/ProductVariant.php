@@ -10,9 +10,11 @@ class ProductVariant extends Model
 {
     use LogsActivity;
 
-    protected $fillable = ['product_id', 'name', 'options', 'sku', 'price', 'regular_price', 'stock', 'image', 'is_active', 'sort_order'];
+    protected $fillable = ['product_id', 'name', 'options', 'sku', 'price', 'regular_price', 'cost_price', 'stock', 'image', 'is_active', 'sort_order'];
 
-    protected $casts = ['options' => 'array', 'regular_price' => 'float', 'is_active' => 'boolean', 'stock' => 'integer'];
+    protected $hidden = ['cost_price'];
+
+    protected $casts = ['options' => 'array', 'regular_price' => 'float', 'cost_price' => 'float', 'is_active' => 'boolean', 'stock' => 'integer'];
 
     protected $appends = ['image_url'];
 

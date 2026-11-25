@@ -110,6 +110,7 @@ class OrderService
                 'variant_name' => $variant?->name,
                 'sku' => $variant?->sku ?: $product->sku,
                 'price' => $price,
+                'cost_price' => $variant?->cost_price ?? $product->cost_price,
                 'quantity' => $qty,
                 'total' => $price * $qty,
             ]);

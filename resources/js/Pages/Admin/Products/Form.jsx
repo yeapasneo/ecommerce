@@ -19,6 +19,7 @@ export default function Form({ product, categories, brands, stockStatuses, aiRea
         brand_id: product?.brand_id ?? '',
         price: product?.price ?? '',
         regular_price: product?.regular_price ?? '',
+        cost_price: product?.cost_price ?? '',
         stock: product?.stock ?? 0,
         stock_status: product?.stock_status ?? 'in_stock',
         warranty_months: product?.warranty_months ?? '',
@@ -34,7 +35,7 @@ export default function Form({ product, categories, brands, stockStatuses, aiRea
         specs: product?.specs?.length ? product.specs.map(({ group, name, value }) => ({ group, name, value })) : [{ group: 'Basic Information', name: '', value: '' }],
         image: null,
         gallery: [],
-        variants: (product?.variants ?? []).map(({ id, options, sku, price, regular_price, stock, is_active }) => ({ id, options, sku: sku ?? '', price, regular_price: regular_price ?? '', stock, is_active })),
+        variants: (product?.variants ?? []).map(({ id, options, sku, price, regular_price, cost_price, stock, is_active }) => ({ id, options, sku: sku ?? '', price, regular_price: regular_price ?? '', cost_price: cost_price ?? '', stock, is_active })),
     });
     const set = (k) => (e) => form.setData(k, e.target.value);
     const e = form.errors;
@@ -136,6 +137,10 @@ export default function Form({ product, categories, brands, stockStatuses, aiRea
                                     <TextInput label="Price (৳)*" type="number" step="0.01" value={form.data.price} onChange={set('price')} error={e.price} />
                                     <TextInput label="Regular Price (৳)" type="number" step="0.01" value={form.data.regular_price} onChange={set('regular_price')} error={e.regular_price} />
                                 </div>
+                                <TextInput className="mt-3" label="Cost Price (৳)" type="number" step="0.01" value={form.data.cost_price} onChange={set('cost_price')} error={e.cost_price} hint="What you pay for one unit. Only staff see it; used for profit reports." />
+                                {Number(form.data.cost_price) > 0 && Number(form.data.price) > 0 && (
+                                    <p className="mt-1 text-xs text-slate-600">Profit per unit: <b>৳{(Number(form.data.price) - Number(form.data.cost_price)).toLocaleString('en-US')}</b> ({Math.round(((Number(form.data.price) - Number(form.data.cost_price)) / Number(form.data.price)) * 100)}% margin)</p>
+                                )}
                                 <p className="mt-2 text-xs text-slate-500">Set a regular price above the price to show a discount.</p>
                             </SubCard>
                             <SubCard title="Inventory" icon="box" tone="blue">
