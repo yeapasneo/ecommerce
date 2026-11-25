@@ -173,7 +173,10 @@ return [
             'password' => env('REDIS_PASSWORD'),
             'port' => env('REDIS_PORT', '6379'),
             'database' => env('REDIS_CACHE_DB', '1'),
-            'max_retries' => env('REDIS_MAX_RETRIES', 3),
+            // Short limits so a stuck Redis falls back to the file cache quickly.
+            'timeout' => env('REDIS_CACHE_TIMEOUT', 1),
+            'read_timeout' => env('REDIS_CACHE_READ_TIMEOUT', 1),
+            'max_retries' => env('REDIS_CACHE_MAX_RETRIES', 1),
             'backoff_algorithm' => env('REDIS_BACKOFF_ALGORITHM', 'decorrelated_jitter'),
             'backoff_base' => env('REDIS_BACKOFF_BASE', 100),
             'backoff_cap' => env('REDIS_BACKOFF_CAP', 1000),

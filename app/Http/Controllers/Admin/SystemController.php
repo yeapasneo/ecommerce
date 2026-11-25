@@ -8,6 +8,7 @@ use App\Messaging\MailConfig;
 use App\Messaging\Sms\SmsManager;
 use App\Models\Setting;
 use App\Models\User;
+use App\Support\CacheDriver;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
@@ -83,6 +84,11 @@ class SystemController extends Controller
             'Enter live credentials and turn sandbox mode off in Settings.');
         $add('Store', 'Search engines', Setting::enabled('seo_noindex') ? 'warn' : 'ok',
             Setting::enabled('seo_noindex') ? 'The site is hidden from search engines.' : 'Search engines can index the site.', 'Turn off "Hide the whole site" in Settings → SEO when you launch.');
+        $store = config('cache.default');
+        $redis = $store === 'redis_or_file' || config("cache.stores.{$store}.driver") === 'redis';
+        $add('Store', 'Cache', $redis ? 'ok' : 'warn',
+            $redis ? 'Using Redis (falls back to the file cache if Redis stops).' : 'Using the '.($store === 'file' ? 'file' : $store).' cache. Redis is '.(CacheDriver::hasClient() ? 'not running.' : 'not installed.'),
+            'Install Redis and the PHP Redis extension (sudo apt install redis-server php-redis) and keep CACHE_STORE=auto. The shop switches to Redis within a minute.');
         $add('Store', 'Optimized config', app()->configurationIsCached() ? 'ok' : 'warn',
             app()->configurationIsCached() ? 'Config and routes are cached.' : 'Not cached (fine while developing).', 'Run php artisan optimize after each deploy.');
 

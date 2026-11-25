@@ -11,6 +11,17 @@ curl -sS https://getcomposer.org/installer | sudo php -- --install-dir=/usr/loca
 curl -fsSL https://deb.nodesource.com/setup_22.x | sudo bash - && sudo apt install -y nodejs
 ```
 
+**Redis (recommended, optional).** With `CACHE_STORE=auto` (the default) the shop uses Redis when it is installed and running, and the file cache when it isn't:
+
+```bash
+sudo apt install -y redis-server php8.3-redis
+sudo systemctl enable --now redis-server
+sudo systemctl restart php8.3-fpm
+php artisan cache:driver   # shows which cache is in use
+```
+
+If Redis stops later, the shop keeps working on the file cache and switches back to Redis within a minute of it returning. Settings → System Status shows the cache in use. For a Redis server on another machine, set `REDIS_HOST`, `REDIS_PORT` and `REDIS_PASSWORD` in `.env`.
+
 ## 2. Database
 
 ```bash

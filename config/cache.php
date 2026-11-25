@@ -13,9 +13,13 @@ return [
     | framework. This connection is utilized if another isn't explicitly
     | specified when running a cache operation inside the application.
     |
+    | "auto" uses Redis when the server has it (PHP Redis extension or Predis
+    | plus a Redis server that answers), otherwise the file cache. See
+    | App\Support\CacheDriver.
+    |
     */
 
-    'default' => env('CACHE_STORE', 'database'),
+    'default' => env('CACHE_STORE', 'auto'),
 
     /*
     |--------------------------------------------------------------------------
@@ -102,6 +106,16 @@ return [
             'stores' => [
                 'database',
                 'array',
+            ],
+        ],
+
+        // Used by CACHE_STORE=auto when Redis is up: if Redis stops answering,
+        // reads and writes fall through to the file cache instead of failing.
+        'redis_or_file' => [
+            'driver' => 'failover',
+            'stores' => [
+                'redis',
+                'file',
             ],
         ],
 

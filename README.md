@@ -180,6 +180,7 @@ php artisan test
 ```
 
 ## Notes
+- **Cache:** `CACHE_STORE=auto` uses Redis when the server has it (the PHP Redis extension or Predis, and a Redis server that answers), otherwise the file cache. The check is repeated every minute, and if Redis stops mid-way, reads and writes fall back to the file cache. Run `php artisan cache:driver` to see which cache is in use. Set `CACHE_STORE=redis`, `file` or `database` to force one.
 - All emails, including password resets, use the SMTP settings saved in Settings → Notifications. When none are saved, they fall back to the mail driver in `.env`.
 - Times use `APP_TIMEZONE` (Asia/Dhaka by default), so flash sale start and end times mean Bangladesh time.
 - Product descriptions and pages accept HTML from admins.
