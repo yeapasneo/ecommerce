@@ -17,6 +17,7 @@ use App\Models\Setting;
 use App\Payments\PaymentManager;
 use App\Services\ProductFeed;
 use App\Support\Activity;
+use App\Support\ErrorAlert;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -74,7 +75,7 @@ class SettingController extends Controller
     public function update(Request $request, PaymentManager $payments, CourierManager $couriers)
     {
         $flags = ['seo_noindex', 'cod_enabled', 'bkash_enabled', 'bkash_sandbox', 'nagad_enabled', 'nagad_sandbox', 'sslcommerz_enabled', 'sslcommerz_sandbox', 'eps_enabled', 'eps_sandbox',
-            'courier_sync_status', 'steadfast_enabled', 'pathao_enabled', 'pathao_sandbox', 'checkout_otp', 'emi_enabled', 'abandoned_cart_enabled', 'ai_chat_enabled', 'ai_writer_auto', 'low_stock_alerts', 'returns_enabled', 'notify_returns', 'back_in_stock_enabled', 'price_drop_alerts', 'loyalty_enabled', 'referral_enabled', 'feeds_enabled', 'page_cache_enabled',
+            'courier_sync_status', 'steadfast_enabled', 'pathao_enabled', 'pathao_sandbox', 'checkout_otp', 'emi_enabled', 'abandoned_cart_enabled', 'ai_chat_enabled', 'ai_writer_auto', 'low_stock_alerts', 'returns_enabled', 'notify_returns', 'back_in_stock_enabled', 'price_drop_alerts', 'loyalty_enabled', 'referral_enabled', 'feeds_enabled', 'page_cache_enabled', 'error_alerts_enabled',
             ...collect(OrderNotifier::EVENTS)->keys()->flatMap(fn ($e) => ["notify_sms_{$e}", "notify_email_{$e}"])->all()];
         $rules = collect(Setting::DEFAULTS)->map(fn () => ['nullable', 'string', 'max:1000'])->all();
         foreach (['delivery_charge_inside', 'delivery_charge_outside', 'express_delivery_charge', 'free_delivery_over'] as $k) {
@@ -115,6 +116,8 @@ class SettingController extends Controller
         $rules['steadfast_webhook_token'] = ['nullable', 'string', 'min:16', 'max:100'];
         $rules['pathao_webhook_secret'] = ['nullable', 'string', 'min:16', 'max:100'];
         $rules['seo_og_image_remove'] = ['nullable', 'boolean'];
+        $rules['error_alert_email'] = ['nullable', 'email', 'max:255'];
+        $rules['error_alert_webhook'] = ['nullable', 'url', 'starts_with:https://', 'max:500'];
         $rules['page_cache_minutes'] = ['nullable', 'integer', 'between:1,60'];
         $rules['whatsapp_number'] = ['nullable', 'regex:/^\+?[0-9 \-]{10,20}$/'];
         $rules['messenger_username'] = ['nullable', 'regex:/^[A-Za-z0-9.\-]{3,80}$/'];
@@ -198,6 +201,16 @@ class SettingController extends Controller
         }
 
         return response()->json(['ok' => true, 'message' => 'Sent. Check the phone.']);
+    }
+
+    public function testErrorAlert()
+    {
+        if (! ErrorAlert::enabled()) {
+            return response()->json(['ok' => false, 'message' => 'Turn alerts on, add an email or webhook and save first.'], 422);
+        }
+        $sent = ErrorAlert::send(new \RuntimeException('This is a test alert from the admin panel.'), test: true);
+
+        return response()->json(['ok' => $sent, 'message' => $sent ? 'Test alert sent. Check your inbox or chat.' : 'Could not send. Check the email (SMTP) settings or the webhook URL.'], $sent ? 200 : 422);
     }
 
     public function buildFeed(ProductFeed $feed)

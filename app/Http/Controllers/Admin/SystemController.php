@@ -9,6 +9,7 @@ use App\Messaging\Sms\SmsManager;
 use App\Models\Setting;
 use App\Models\User;
 use App\Support\CacheDriver;
+use App\Support\ErrorAlert;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Cache;
@@ -93,6 +94,9 @@ class SystemController extends Controller
         $add('Store', 'Sessions', $session === 'redis_or_database' || $session === 'redis' ? 'ok' : 'warn',
             $session === 'redis_or_database' ? 'Stored in Redis (fall back to the database if Redis stops).' : "Stored in: {$session}.",
             'Install Redis (see Cache above) and keep SESSION_DRIVER=auto. Switching logs signed-in users out once.');
+        $add('Store', 'Error alerts', ErrorAlert::enabled() ? 'ok' : ($production ? 'warn' : 'ok'),
+            ErrorAlert::enabled() ? 'You get an email or chat message when the site has an error.' : 'Off: errors are only written to the log.',
+            'Turn on Error Alerts in Settings → Notifications. For downtime, also add '.url('/up').' to a free uptime monitor (e.g. UptimeRobot).');
         $add('Store', 'Optimized config', app()->configurationIsCached() ? 'ok' : 'warn',
             app()->configurationIsCached() ? 'Config and routes are cached.' : 'Not cached (fine while developing).', 'Run php artisan optimize after each deploy.');
 

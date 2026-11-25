@@ -58,6 +58,31 @@ function TestSend({ label, url, field, placeholder, type = 'text' }) {
     );
 }
 
+/** A button that POSTs to a test endpoint and shows the answer. */
+function TestButton({ url, label, body = {} }) {
+    const [state, setState] = useState(null);
+    const run = async () => {
+        setState({ loading: true });
+        try {
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-XSRF-TOKEN': decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] ?? '') },
+                body: JSON.stringify(body),
+            });
+            const data = await res.json().catch(() => ({}));
+            setState({ ok: res.ok && data.ok, message: data.message || 'No answer.' });
+        } catch {
+            setState({ ok: false, message: 'Could not reach the server.' });
+        }
+    };
+    return (
+        <div>
+            <button type="button" onClick={run} disabled={state?.loading} className="btn-outline btn-sm">{state?.loading ? 'Sending…' : label}</button>
+            {state && !state.loading && <p className={`mt-1 text-xs ${state.ok ? 'text-green-700' : 'text-red-600'}`} role="status">{state.message}</p>}
+        </div>
+    );
+}
+
 /** "Test connection" for one AI provider (uses the saved key). */
 function TestAi({ provider }) {
     const [state, setState] = useState(null);
@@ -496,6 +521,19 @@ export default function Settings({ values, secretsSet, gateways, couriers, notif
                                     {flag(form.data.checkout_otp) && !notifications.smsReady && <p className="mt-2 text-xs text-amber-700">SMS isn't set up yet, so checkout won't ask for a code until it is.</p>}
                                 </div>
                                 <TextArea label="Code message" rows={2} value={form.data.sms_template_otp ?? ''} onChange={set('sms_template_otp')} error={e.sms_template_otp} hint="Must include {code}." />
+                            </div>
+                        </Panel>
+
+                        <Panel title="Error Alerts" icon="info">
+                            <div className="grid items-start gap-5 lg:grid-cols-2">
+                                <div className="space-y-3">
+                                    {toggle('error_alerts_enabled', 'Tell me when the live site has an error', 'Each different error is sent once an hour at most (20 alerts an hour in total). Details stay in the server log.')}
+                                    <TestButton url="/admin/settings/test-error-alert" label="Send a test alert" />
+                                </div>
+                                <div className="space-y-4">
+                                    {text('error_alert_email', 'Email', { type: 'email', placeholder: 'you@example.com' })}
+                                    {text('error_alert_webhook', 'Chat webhook URL (optional)', { placeholder: 'https://hooks.slack.com/…', hint: 'Slack, Discord, Google Chat or Microsoft Teams incoming webhook' })}
+                                </div>
                             </div>
                         </Panel>
 

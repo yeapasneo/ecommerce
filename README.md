@@ -15,6 +15,12 @@ A full e-commerce store for computers, components and gadgets, with a complete a
 - **Product variants** such as size, colour or storage. Each option set has its own price, stock, SKU and photo, and the shopper picks the options on the product page.
 - **Flash sales** with a countdown on the home page and the product page. The sale price applies automatically between the start and end times.
 - **EMI prices**: a table of monthly instalments on the product page, built from the plans set in Settings → Payments.
+- **Back-in-stock and price-drop alerts:** "Notify me when available" on products that can't be bought; people who wishlisted a product get a message when its price drops 2% or more (at most weekly).
+- **Loyalty points and referrals:** points on delivered orders, used at checkout; referral links that reward both people once the friend's first order is delivered.
+- **WhatsApp / Messenger buttons**, "Ask on WhatsApp" on products, and the AI assistant hands over to a person when needed.
+- **Google Shopping and Facebook/Instagram shop feeds** at `/feeds/google.xml` and `/feeds/facebook.xml`, rebuilt every 6 hours.
+- **Installable app (PWA):** shoppers can add the shop to their home screen; an offline page shows when there is no connection.
+- **Fast pages:** pages for visitors who aren't signed in are served from a cache (about 0.03 s instead of 0.1–0.7 s) and refreshed as soon as anything on them changes.
 - **AI shopping assistant**: a chat button on every store page. It answers in Bangla or English, finds products using the shop's real prices and stock (it can only show products the search returned), helps with PC builds, and checks an order's status when given the order number and phone. Add-to-cart works from the chat.
 - **Bangla language option**: an English ⇄ বাংলা switch in the header. Translations are in `lang/bn.json`, and the default language is set in Settings → General.
 - **Product page:**
@@ -57,6 +63,12 @@ A full e-commerce store for computers, components and gadgets, with a complete a
 - **AI Writer** (Products → AI Writer): writes descriptions, key features, SEO title and description, and Bangla versions from each product's specs. Best sellers with thin descriptions go first, in the background (or hourly when turned on). Staff compare old and new text, edit if needed, and publish. A **Write with AI** button on the product form fills the fields for one product.
 - **Replies with AI:** "Draft with AI" on product questions (answered from the product's specs), review replies (shown under the review on the product page) and contact messages (the reply is emailed from the panel). Staff check and edit every draft before it's sent. Customer names, emails and phones aren't sent to the AI.
 - **AI settings** (Settings → AI): Google Gemini (AI Studio), Groq or OpenRouter, all with free plans, plus a backup provider used when the main one is busy or out of quota. Keys are stored encrypted. A daily request limit protects the free quota, and every request is logged.
+- **Returns & Warranty:** customers request a return (within the return window) or a warranty claim (until each item's warranty ends) from a delivered order; staff approve or reject with a note, mark items received (choosing which go back on sale), refund in full or part (bKash, Nagad, cash, bank, card), and close repairs and replacements. Each step can SMS/email the customer. Serial/IMEI numbers are recorded per order line (no duplicates), printed on the invoice, and searchable in **Warranty Lookup**.
+- **Profit:** a cost price on every product and variant (staff only), copied onto each sale. Reports show cost of goods, gross profit and margin per product, category and period, after refunds.
+- **Inventory:** every stock change is recorded (sale, cancellation, return, purchase, manual count, import) with who and why; low-stock list with 30-day sales, one-click reorder and a morning low-stock email; customers waiting for "Notify me".
+- **Suppliers & purchase orders:** draft → ordered → received in one or more deliveries; receiving adds stock and updates cost prices.
+- **Bulk import/export:** download all products (one row per variant) as CSV, edit in Excel or Google Sheets, upload CSV or .xlsx, check every change in a preview, then apply.
+- **Error alerts:** email and/or a Slack/Discord/Google Chat/Teams message when the live site has an error (once an hour per error).
 - **Customers:** order count and total spent, block or unblock, and grant or remove admin (Owner only).
 - **Coupons, Banners and Sliders, Offers, Pages, PC Builder parts.**
 - **Moderation:** approve reviews, answer product questions, read contact messages and see newsletter subscribers.
@@ -175,6 +187,8 @@ Pathao was tested end to end against its public sandbox. Steadfast has no sandbo
 Deployment steps, Nginx and Supervisor configs are in **[DEPLOY.md](DEPLOY.md)** and `deploy/`.
 
 ## Tests
+
+GitHub Actions runs Pint and the whole suite (PostgreSQL 16 and Redis) on every push: `.github/workflows/tests.yml`.
 
 The feature tests run against a PostgreSQL database named `ecommerce_test` (see `phpunit.xml`):
 

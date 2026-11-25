@@ -260,6 +260,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         Route::put('settings', [Admin\SettingController::class, 'update'])->name('settings.update');
         Route::post('settings/test-sms', [Admin\SettingController::class, 'testSms'])->name('settings.test-sms')->middleware('throttle:5,1');
         Route::post('settings/feeds', [Admin\SettingController::class, 'buildFeed'])->name('settings.feeds')->middleware('throttle:5,1');
+        Route::post('settings/test-error-alert', [Admin\SettingController::class, 'testErrorAlert'])->name('settings.test-error-alert')->middleware('throttle:5,1');
         Route::post('settings/test-ai', [Admin\SettingController::class, 'testAi'])->name('settings.test-ai')->middleware('throttle:5,1');
         Route::post('settings/test-email', [Admin\SettingController::class, 'testEmail'])->name('settings.test-email')->middleware('throttle:5,1');
         Route::post('couriers/{courier}/test', [Admin\CourierController::class, 'test'])->name('couriers.test');

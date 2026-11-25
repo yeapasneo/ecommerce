@@ -115,6 +115,11 @@ class Setting extends Model
         'referral_bonus' => '200', // points for the person who invited
         'referral_welcome' => '100', // points for the new customer
 
+        // Error alerts
+        'error_alerts_enabled' => '0',
+        'error_alert_email' => '',
+        'error_alert_webhook' => '',
+
         // Speed: full-page cache for guests
         'page_cache_enabled' => '1',
         'page_cache_minutes' => '5',
