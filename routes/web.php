@@ -163,6 +163,11 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     });
 
     Route::middleware('can:admin.catalog')->group(function () {
+        // Bulk price/stock updates (before the resource so "import" isn't read as a product id).
+        Route::get('products/import', [Admin\ProductImportController::class, 'index'])->name('products.import');
+        Route::post('products/import', [Admin\ProductImportController::class, 'preview'])->name('products.import.preview');
+        Route::post('products/import/apply', [Admin\ProductImportController::class, 'apply'])->name('products.import.apply');
+        Route::get('products/export', [Admin\ProductImportController::class, 'export'])->name('products.export');
         Route::resource('products', Admin\ProductController::class)->except('show');
         Route::delete('products/{product}/images/{image}', [Admin\ProductController::class, 'destroyImage'])->name('products.images.destroy');
         Route::resource('categories', Admin\CategoryController::class)->only('index', 'store', 'update', 'destroy');

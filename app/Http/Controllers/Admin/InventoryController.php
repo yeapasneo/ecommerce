@@ -33,7 +33,7 @@ class InventoryController extends Controller
             ->get(['id', 'name', 'sku', 'stock', 'stock_status', 'cost_price', 'image'])
             ->map(fn ($p) => ['product_id' => $p->id, 'variant_id' => null, 'name' => $p->name, 'sku' => $p->sku, 'stock' => $p->stock, 'image_url' => $p->image_url]);
         $variants = ProductVariant::with('product:id,name,sku,image,is_active,stock_status')->where('is_active', true)->where('stock', '<=', $limit)
-            ->whereHas('product', fn ($q) => $q->where('is_active', true)->whereNotIn('stock_status', ['pre_order', 'upcoming']))
+            ->whereHas('product', fn ($q) => $q->where('is_active', true)->whereNotIn('stock_status', ['pre_order', 'up_coming']))
             ->orderBy('stock')->limit(500)->get()
             ->map(fn ($v) => ['product_id' => $v->product_id, 'variant_id' => $v->id, 'name' => "{$v->product->name} ({$v->name})", 'sku' => $v->sku ?: $v->product->sku, 'stock' => $v->stock, 'image_url' => $v->image_url ?: $v->product->image_url]);
 

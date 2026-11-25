@@ -144,7 +144,7 @@ class PurchaseOrderController extends Controller
                     }
                     $product->update(['stock' => $product->stock + $qty]
                         + (! $variant ? $cost : [])
-                        + (in_array($product->stock_status, ['out_of_stock', 'upcoming'], true) ? ['stock_status' => 'in_stock'] : []));
+                        + (in_array($product->stock_status, ['out_of_stock', 'up_coming'], true) ? ['stock_status' => 'in_stock'] : []));
                     $item->increment('received_quantity', $qty);
                     $count += $qty;
                 }

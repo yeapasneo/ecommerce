@@ -24,6 +24,7 @@ export default function Index({ products, filters, categories, brands, stockStat
                     All Products <span className="rounded-full bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary-700">{total.toLocaleString()}</span>
                 </h1>
                 <SearchBox value={f.search} onChange={(v) => setF({ ...f, search: v })} onSubmit={() => apply()} placeholder="Search name or SKU…" />
+                <Link href="/admin/products/import" className="btn-outline h-10 rounded-lg"><Icon name="file" className="h-4 w-4" /> Import / Export</Link>
                 <Link href="/admin/products/create" className="btn-primary h-10 rounded-lg"><Icon name="plus" className="h-4 w-4" /> Add Product</Link>
             </div>
 

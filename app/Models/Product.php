@@ -172,6 +172,26 @@ class Product extends Model
         ];
     }
 
+    /** A product with variants takes its price, stock and status from them (cheapest active variant). */
+    public function syncFromVariants(): void
+    {
+        $active = $this->variants()->where('is_active', true)->get();
+        if ($active->isEmpty()) {
+            $this->update(['has_variants' => false]);
+
+            return;
+        }
+        $stock = (int) $active->sum('stock');
+        $cheapest = $active->each->setRelation('product', $this)->sortBy(fn ($v) => $v->basePrice())->first();
+        $this->update([
+            'has_variants' => true,
+            'price' => $cheapest->basePrice(),
+            'regular_price' => $cheapest->regular_price,
+            'stock' => $stock,
+            'stock_status' => in_array($this->stock_status, ['pre_order', 'up_coming'], true) ? $this->stock_status : ($stock > 0 ? 'in_stock' : 'out_of_stock'),
+        ]);
+    }
+
     protected static function booted(): void
     {
         // Stock history (see App\Services\Stock).

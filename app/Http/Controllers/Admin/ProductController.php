@@ -152,21 +152,7 @@ class ProductController extends Controller
         }
         $product->variants()->whereNotIn('id', $keep)->delete();
 
-        $active = $product->variants()->where('is_active', true)->get();
-        if ($active->isEmpty()) {
-            $product->update(['has_variants' => false]);
-
-            return;
-        }
-        $stock = (int) $active->sum('stock');
-        $cheapest = $active->sortBy(fn ($v) => $v->basePrice())->first();
-        $product->update([
-            'has_variants' => true,
-            'price' => $cheapest->basePrice(),
-            'regular_price' => $cheapest->regular_price,
-            'stock' => $stock,
-            'stock_status' => in_array($product->stock_status, ['pre_order', 'up_coming'], true) ? $product->stock_status : ($stock > 0 ? 'in_stock' : 'out_of_stock'),
-        ]);
+        $product->syncFromVariants();
     }
 
     protected function validated(Request $request, ?Product $product = null): array
