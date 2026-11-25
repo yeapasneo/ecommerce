@@ -115,7 +115,7 @@ class SettingController extends Controller
         $rules['ai_provider'] = ['nullable', Rule::in(array_keys(AiClient::PROVIDERS))];
         $rules['ai_fallback'] = ['nullable', Rule::in(['', ...array_keys(AiClient::PROVIDERS)])];
         foreach (array_keys(AiClient::PROVIDERS) as $p) {
-            $rules["ai_{$p}_model"] = ['nullable', 'string', 'max:100', 'regex:/^[A-Za-z0-9._:\/-]+$/'];
+            $rules["ai_{$p}_model"] = ['nullable', 'string', 'max:200', 'regex:/^[A-Za-z0-9._:\/-]+(\s*,\s*[A-Za-z0-9._:\/-]+)*$/'];
         }
         $rules['ai_daily_limit'] = ['nullable', 'integer', 'min:0', 'max:100000'];
         $rules['ai_writer_per_hour'] = ['nullable', 'integer', 'between:1,200'];

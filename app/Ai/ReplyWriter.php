@@ -31,7 +31,7 @@ class ReplyWriter
         {$this->productFacts($product)}
         {$this->labelled('Earlier answers on this product (for tone)', $earlier)}
         Question: {$question->question}
-        TXT, 300);
+        TXT, 1500);
     }
 
     public function review(Review $review): string
@@ -46,7 +46,7 @@ class ReplyWriter
         Product: {$product?->name}
         Rating: {$review->rating} out of 5
         Review: {$review->comment}
-        TXT, 250);
+        TXT, 1500);
     }
 
     /** Email reply. Starts with "Hi {name}," which is filled in here, not by the AI. */
@@ -67,7 +67,7 @@ class ReplyWriter
 
         Subject: {$message->subject}
         Message: {$message->message}
-        TXT, 500);
+        TXT, 2000);
 
         $first = Str::of((string) $message->name)->trim()->before(' ')->value() ?: 'there';
 

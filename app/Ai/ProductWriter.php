@@ -58,7 +58,7 @@ class ProductWriter
         "description_bn": the description in natural Bangla, same HTML rules.
         TXT;
 
-        $data = $this->ai->json([['role' => 'system', 'content' => $system], ['role' => 'user', 'content' => $user]], 'writer', 3000);
+        $data = $this->ai->json([['role' => 'system', 'content' => $system], ['role' => 'user', 'content' => $user]], 'writer', 6000);
 
         return $this->clean($data);
     }

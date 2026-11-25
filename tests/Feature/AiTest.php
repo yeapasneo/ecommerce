@@ -98,9 +98,9 @@ class AiTest extends TestCase
         ]);
 
         $this->assertSame('Hello from Groq', app(AiClient::class)->text([['role' => 'user', 'content' => 'hi']], 'test'));
-        Http::assertSent(fn (Request $r) => str_contains($r->url(), 'generativelanguage') && $r->hasHeader('Authorization', 'Bearer G-KEY') && $r['model'] === 'gemini-2.5-flash');
+        Http::assertSent(fn (Request $r) => str_contains($r->url(), 'generativelanguage') && $r->hasHeader('Authorization', 'Bearer G-KEY') && $r['model'] === 'gemini-3.5-flash-lite' && $r['reasoning_effort'] === 'low');
         Http::assertSent(fn (Request $r) => str_contains($r->url(), 'groq') && $r->hasHeader('Authorization', 'Bearer Q-KEY'));
-        $this->assertSame(['error', 'ok'], AiLog::orderBy('id')->pluck('status')->all());
+        $this->assertSame(['error', 'error', 'error', 'ok'], AiLog::orderBy('id')->pluck('status')->all()); // each Gemini model, then Groq
         $this->assertSame('Quota exceeded', AiLog::first()->error);
     }
 

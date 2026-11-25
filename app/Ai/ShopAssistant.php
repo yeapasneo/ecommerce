@@ -17,7 +17,7 @@ use Illuminate\Support\Str;
  */
 class ShopAssistant
 {
-    protected const MAX_ROUNDS = 4;
+    protected const MAX_ROUNDS = 5;
 
     /** Products the tools returned in this conversation turn, by slug. */
     protected array $seen = [];
@@ -47,8 +47,11 @@ class ShopAssistant
 
         for ($round = 0; $round < self::MAX_ROUNDS; $round++) {
             $last = $round === self::MAX_ROUNDS - 1;
-            $answer = $this->ai->chat($messages, 'chat', $last ? [] : $this->tools(), 900, 0.3);
-            if (empty($answer['tool_calls'])) {
+            if ($last) {
+                $messages[] = ['role' => 'user', 'content' => '(System: answer the shopper now using the tool results above. Do not call any more tools.)'];
+            }
+            $answer = $this->ai->chat($messages, 'chat', $last ? [] : $this->tools(), 2500, 0.3);
+            if (empty($answer['tool_calls']) || $last) {
                 return $this->finish((string) $answer['content']);
             }
             $messages[] = ['role' => 'assistant', 'content' => $answer['content'] ?: null, 'tool_calls' => $answer['tool_calls']];
@@ -96,7 +99,7 @@ class ShopAssistant
         Help shoppers find products, compare them, build PCs and check their orders.
 
         Rules:
-        - Use the tools for every product question. Quote ONLY prices, stock and specs the tools return. Never invent products, prices, discounts, stock or specs. If the tools find nothing, say so and suggest a different search.
+        - Use the tools for every product question. Search results already include price, stock and key features: call get_product only when you need full specifications (e.g. for compatibility), and search at most 2-3 times per question. Quote ONLY prices, stock and specs the tools return. Never invent products, prices, discounts, stock or specs. If the tools find nothing, say so and suggest a different search.
         - Prices are in Bangladeshi Taka; write them like ৳45,500.
         - Reply in the shopper's language: Bangla if they write Bangla (or Banglish), otherwise English.
         - Be brief and friendly: a short answer, then at most 4 products with one line each on why they fit. Ask one question if the need or budget is unclear.
@@ -154,7 +157,8 @@ class ShopAssistant
     protected function searchProducts(array $args): array
     {
         $term = Str::limit(trim((string) ($args['query'] ?? '')), 100, '');
-        $query = Product::active()->with('brand:id,name');
+        // Products without a price ("call for price") can't be recommended by budget.
+        $query = Product::active()->with('brand:id,name')->where('price', '>', 0);
         if ($term !== '') {
             ProductSearch::apply($query, $term);
         }

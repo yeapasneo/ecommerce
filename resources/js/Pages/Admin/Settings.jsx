@@ -628,7 +628,7 @@ export default function Settings({ values, secretsSet, gateways, couriers, notif
                                             </div>
                                             <div className="grid items-start gap-4 sm:grid-cols-2">
                                                 {secret(`ai_${k}_key`, 'API key')}
-                                                {text(`ai_${k}_model`, 'Model', { hint: k === 'gemini' ? 'e.g. gemini-2.5-flash' : k === 'groq' ? 'e.g. openai/gpt-oss-120b' : 'e.g. a model ending in :free' })}
+                                                {text(`ai_${k}_model`, 'Models', { hint: `${k === 'gemini' ? 'e.g. gemini-3.5-flash-lite, gemini-3.6-flash' : k === 'groq' ? 'e.g. openai/gpt-oss-120b' : 'e.g. a model ending in :free'}. Separate several with commas: the next is tried when one is busy.` })}
                                             </div>
                                             {secretsSet[`ai_${k}_key`] && <div className="mt-3"><TestAi provider={k} /></div>}
                                         </section>

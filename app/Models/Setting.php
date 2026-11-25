@@ -97,7 +97,7 @@ class Setting extends Model
         'ai_provider' => 'gemini',
         'ai_fallback' => 'groq',
         'ai_gemini_key' => '',
-        'ai_gemini_model' => 'gemini-2.5-flash',
+        'ai_gemini_model' => 'gemini-3.5-flash-lite, gemini-3.6-flash, gemini-3.1-flash-lite',
         'ai_groq_key' => '',
         'ai_groq_model' => 'openai/gpt-oss-120b',
         'ai_openrouter_key' => '',

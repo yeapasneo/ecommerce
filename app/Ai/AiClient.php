@@ -5,7 +5,9 @@ namespace App\Ai;
 use App\Models\AiLog;
 use App\Models\Setting;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Sleep;
 use Throwable;
 
 /**
@@ -43,6 +45,17 @@ class AiClient
             ->unique()->values()->all();
     }
 
+    protected static function busyKey(string $provider, ?string $model): string
+    {
+        return "ai:busy:{$provider}:".($model ?? 'default');
+    }
+
+    /** The models set for a provider, in the order to try them. */
+    public static function models(string $provider): array
+    {
+        return array_values(array_filter(array_map('trim', explode(',', (string) Setting::get("ai_{$provider}_model")))));
+    }
+
     public function isConfigured(): bool
     {
         return $this->chain() !== [];
@@ -76,9 +89,22 @@ class AiClient
             throw new AiException('The daily AI limit has been reached. It resets at midnight, or raise it in Settings → AI.', 'limit');
         }
 
-        $lastError = null;
+        // Each provider can list several models ("gemini-3.8-flash, gemini-3.6-flash"):
+        // when one is overloaded or out of quota, the next is tried, then the backup provider.
+        $attempts = [];
         foreach ($chain as $provider) {
-            $model = Setting::get("ai_{$provider}_model") ?: null;
+            foreach (self::models($provider) ?: [null] as $model) {
+                $attempts[] = [$provider, $model];
+            }
+        }
+
+        // Skip models that were overloaded in the last few minutes (but always try at least one).
+        $fresh = array_values(array_filter($attempts, fn ($a) => ! Cache::has(self::busyKey(...$a))));
+        $attempts = $fresh ?: $attempts;
+        $timeout = $feature === 'chat' ? 40 : 60;
+
+        $lastError = null;
+        foreach ($attempts as [$provider, $model]) {
             $payload = array_filter([
                 'model' => $model,
                 'messages' => $messages,
@@ -86,30 +112,47 @@ class AiClient
                 'max_tokens' => $maxTokens,
                 'tools' => $tools ?: null,
             ], fn ($v) => $v !== null);
-            $started = microtime(true);
-
-            try {
-                $response = Http::withToken((string) Setting::get("ai_{$provider}_key"))
-                    ->withHeaders($provider === 'openrouter' ? ['HTTP-Referer' => config('app.url'), 'X-Title' => (string) Setting::get('site_name')] : [])
-                    ->acceptJson()->connectTimeout(5)->timeout(45)
-                    ->post(self::PROVIDERS[$provider]['url'], $payload);
-            } catch (ConnectionException $e) {
-                $this->log($feature, $provider, $model, 'error', $started, error: 'Could not connect: '.$e->getMessage());
-                $lastError = new AiException("Could not reach {$this->label($provider)}.", 'unavailable');
-
-                continue;
+            if ($provider === 'gemini') {
+                // Gemini models think before answering ("none" isn't accepted by all of them). Thinking
+                // counts against max_tokens, so callers leave room for it.
+                $payload['reasoning_effort'] = 'low';
             }
 
-            if ($response->successful() && is_array($message = $response->json('choices.0.message'))) {
-                $this->log($feature, $provider, $model, 'ok', $started, (int) $response->json('usage.prompt_tokens'), (int) $response->json('usage.completion_tokens'));
+            // "High demand" (503) spikes are short, so each model gets one quick retry.
+            for ($try = 1; $try <= 2; $try++) {
+                $started = microtime(true);
+                try {
+                    $response = Http::withToken((string) Setting::get("ai_{$provider}_key"))
+                        ->withHeaders($provider === 'openrouter' ? ['HTTP-Referer' => config('app.url'), 'X-Title' => (string) Setting::get('site_name')] : [])
+                        ->acceptJson()->connectTimeout(5)->timeout($timeout)
+                        ->post(self::PROVIDERS[$provider]['url'], $payload);
+                } catch (ConnectionException $e) {
+                    Cache::put(self::busyKey($provider, $model), true, 300);
+                    $this->log($feature, $provider, $model, 'error', $started, error: 'Could not connect: '.$e->getMessage());
+                    $lastError = new AiException("Could not reach {$this->label($provider)}.", 'unavailable');
 
-                return ['content' => $message['content'] ?? null, 'tool_calls' => $message['tool_calls'] ?? null, 'provider' => $provider, 'model' => $model];
+                    continue 2;
+                }
+
+                if ($response->successful() && is_array($message = $response->json('choices.0.message'))) {
+                    $this->log($feature, $provider, $model, 'ok', $started, (int) $response->json('usage.prompt_tokens'), (int) $response->json('usage.completion_tokens'));
+
+                    return ['content' => $message['content'] ?? null, 'tool_calls' => $message['tool_calls'] ?? null, 'provider' => $provider, 'model' => $model];
+                }
+
+                $error = $this->errorText($response->json(), $response->status());
+                $this->log($feature, $provider, $model, 'error', $started, error: $error);
+                $lastError = new AiException("{$this->label($provider)}: {$error}", $response->status() === 429 ? 'limit' : 'error');
+                if ($response->status() !== 503 || $try === 2) {
+                    if (in_array($response->status(), [429, 503], true)) {
+                        Cache::put(self::busyKey($provider, $model), true, 300);
+                    }
+                    break;
+                }
+                Sleep::for(1500)->milliseconds();
             }
 
-            $error = $this->errorText($response->json(), $response->status());
-            $this->log($feature, $provider, $model, 'error', $started, error: $error);
-            $lastError = new AiException("{$this->label($provider)}: {$error}", $response->status() === 429 ? 'limit' : 'error');
-            // Keep going to the fallback for quota, overload, auth and server errors.
+            // Move on for quota, overload, auth, unknown-model and server errors; stop on bad requests.
             if (! in_array($response->status(), [401, 403, 404, 408, 429, 500, 502, 503, 504], true)) {
                 break;
             }
@@ -150,9 +193,9 @@ class AiClient
     /** Quick check from Settings: one short request to the given provider. */
     public function test(string $provider): string
     {
-        $reply = $this->chat([['role' => 'user', 'content' => 'Reply with the single word: OK']], 'test', [], 20, 0, $provider);
+        $reply = $this->chat([['role' => 'user', 'content' => 'Reply with the single word: OK']], 'test', [], 1000, 0, $provider);
 
-        return trim((string) $reply['content']) ?: '(empty reply)';
+        return (trim((string) $reply['content']) ?: '(empty reply)').($reply['model'] ? " (model: {$reply['model']})" : '');
     }
 
     public function label(string $provider): string
