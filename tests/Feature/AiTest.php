@@ -308,4 +308,21 @@ class AiTest extends TestCase
         $q = Question::create(['product_id' => $this->product->id, 'user_id' => $catalog->id, 'question' => 'x?']);
         $this->actingAs($catalog)->postJson("/admin/ai/reply/question/{$q->id}")->assertForbidden();
     }
+
+    public function test_assistant_can_hand_over_to_a_person(): void
+    {
+        $this->keys(['ai_chat_enabled' => '1']);
+        Http::fake([self::GEMINI => Http::response(self::reply("A team member will call you about a bulk price.\nHANDOVER"))]);
+        $this->postJson('/assistant', ['messages' => [['role' => 'user', 'content' => 'I want 20 laptops, best price?']]])
+            ->assertOk()->assertJsonPath('handover', true)->assertJsonPath('reply', 'A team member will call you about a bulk price.');
+    }
+
+    public function test_chat_button_numbers_are_validated_and_shared(): void
+    {
+        $base = ['site_name' => 'Shop', 'delivery_charge_inside' => 60, 'delivery_charge_outside' => 120, 'express_delivery_charge' => 150, 'free_delivery_over' => 0];
+        $this->actingAs($this->admin)->put('/admin/settings', $base + ['whatsapp_number' => 'abc'])->assertSessionHasErrors('whatsapp_number');
+        $this->actingAs($this->admin)->put('/admin/settings', $base + ['whatsapp_number' => '8801712345678', 'messenger_username' => 'technestbd'])->assertSessionHasNoErrors();
+        auth()->logout();
+        $this->get('/')->assertInertia(fn (Assert $p) => $p->where('settings.whatsapp_number', '8801712345678')->where('settings.messenger_username', 'technestbd'));
+    }
 }

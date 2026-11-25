@@ -8,6 +8,7 @@ import Seo from '../../Components/Seo';
 import Stars from '../../Components/Stars';
 import ShopLayout from '../../Layouts/ShopLayout';
 import { date, money, statusColor } from '../../lib/format';
+import { whatsappUrl } from '../../lib/contact';
 import { t } from '../../lib/i18n';
 
 function Gallery({ product }) {
@@ -229,6 +230,11 @@ export default function Show({ product, breadcrumbs, specGroups, reviews, rating
                         <button onClick={() => requireLogin(() => router.post('/account/wishlist', { product_id: product.id }, { preserveScroll: true }))} className={`flex items-center gap-1 ${inWishlist ? 'text-red-600' : 'text-slate-600 hover:text-accent-600'}`}>
                             <Icon name="heart" className="h-4 w-4" fill={inWishlist ? 'currentColor' : 'none'} /> {inWishlist ? t('In Wishlist') : t('Add to Wishlist')}
                         </button>
+                        {whatsappUrl(settings) && (
+                            <a href={whatsappUrl(settings, `${t('Hi, I want to know about')} ${product.name}${variant ? ` (${variant.name})` : ''}: ${typeof window !== 'undefined' ? window.location.href : ''}`)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-slate-600 hover:text-[#128C7E]">
+                                <Icon name="chat" className="h-4 w-4" /> {t('Ask on WhatsApp')}
+                            </a>
+                        )}
                         <button onClick={() => router.post('/compare', { product_id: product.id }, { preserveScroll: true })} className={`flex items-center gap-1 ${inCompare ? 'text-brand-600' : 'text-slate-600 hover:text-accent-600'}`}>
                             <Icon name="compare" className="h-4 w-4" /> {inCompare ? t('Added to Compare') : t('Add to Compare')}
                         </button>

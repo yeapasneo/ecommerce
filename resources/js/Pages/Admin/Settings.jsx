@@ -280,6 +280,13 @@ export default function Settings({ values, secretsSet, gateways, couriers, notif
                                     {text('instagram', 'Instagram URL')}
                                 </div>
                             </Panel>
+                            <Panel title="Chat Buttons" icon="chat">
+                                <p className="-mt-2 mb-4 text-sm text-slate-500">Round WhatsApp and Messenger buttons on every store page, an “Ask on WhatsApp” link on products, and a “talk to a person” option in the AI chat. Leave blank to hide.</p>
+                                <div className="grid gap-4">
+                                    {text('whatsapp_number', 'WhatsApp number', { placeholder: '8801712345678', hint: 'With country code, digits only' })}
+                                    {text('messenger_username', 'Facebook Page username', { placeholder: 'technestbd', hint: 'From your page link: facebook.com/technestbd' })}
+                                </div>
+                            </Panel>
                         </div>
                     </div>
                 )}

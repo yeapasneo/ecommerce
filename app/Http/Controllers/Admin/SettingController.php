@@ -115,6 +115,8 @@ class SettingController extends Controller
         $rules['steadfast_webhook_token'] = ['nullable', 'string', 'min:16', 'max:100'];
         $rules['pathao_webhook_secret'] = ['nullable', 'string', 'min:16', 'max:100'];
         $rules['seo_og_image_remove'] = ['nullable', 'boolean'];
+        $rules['whatsapp_number'] = ['nullable', 'regex:/^\+?[0-9 \-]{10,20}$/'];
+        $rules['messenger_username'] = ['nullable', 'regex:/^[A-Za-z0-9.\-]{3,80}$/'];
         $rules['loyalty_earn_per'] = ['nullable', 'numeric', 'min:1'];
         $rules['loyalty_point_value'] = ['nullable', 'numeric', 'min:0.01'];
         $rules['loyalty_min_redeem'] = ['nullable', 'integer', 'min:0'];
@@ -139,6 +141,8 @@ class SettingController extends Controller
             'ga_measurement_id.regex' => 'Use the GA4 measurement ID, e.g. G-ABC123XYZ.',
             'facebook_pixel_id.regex' => 'The Pixel ID is a number, e.g. 123456789012345.',
             'sms_template_otp.regex' => 'The code message must include {code}.',
+            'whatsapp_number.regex' => 'Use the full number with country code, e.g. 8801712345678.',
+            'messenger_username.regex' => 'Use your Facebook Page username, e.g. technestbd (from facebook.com/technestbd).',
             'emi_plans.regex' => 'Use months:interest pairs separated by commas, e.g. 3:0, 6:0, 12:7.',
         ]);
 

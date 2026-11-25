@@ -114,6 +114,10 @@ class Setting extends Model
         'referral_bonus' => '200', // points for the person who invited
         'referral_welcome' => '100', // points for the new customer
 
+        // Chat buttons (WhatsApp / Messenger)
+        'whatsapp_number' => '',
+        'messenger_username' => '',
+
         // Product feeds (Google Shopping, Facebook / Instagram)
         'feeds_enabled' => '0',
         'feed_generated_at' => '',
@@ -199,6 +203,7 @@ class Setting extends Model
         'delivery_charge_inside', 'delivery_charge_outside', 'express_delivery_charge', 'free_delivery_over',
         'facebook', 'youtube', 'instagram',
         'loyalty_enabled', 'loyalty_earn_per', 'loyalty_point_value', 'referral_enabled', 'referral_welcome',
+        'whatsapp_number', 'messenger_username',
     ];
 
     public static function all_settings(): array

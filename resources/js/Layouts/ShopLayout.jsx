@@ -1,6 +1,7 @@
 import { Link, useForm, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ChatAssistant from '../Components/ChatAssistant';
+import ContactButtons from '../Components/ContactButtons';
 import Flash from '../Components/Flash';
 import Icon from '../Components/Icon';
 import SearchBox from '../Components/SearchBox';
@@ -215,6 +216,7 @@ export default function ShopLayout({ children }) {
             <main className="flex-1">{children}</main>
             <Footer settings={settings} />
             <Flash />
+            <ContactButtons />
             <ChatAssistant />
         </div>
     );

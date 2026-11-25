@@ -1,5 +1,6 @@
 import { Link, router, usePage } from '@inertiajs/react';
 import { Fragment, useEffect, useRef, useState } from 'react';
+import { callUrl, messengerUrl, whatsappUrl } from '../lib/contact';
 import { money } from '../lib/format';
 import { t } from '../lib/i18n';
 import Icon from './Icon';
@@ -73,8 +74,26 @@ function ProductRow({ p }) {
     );
 }
 
+/** "Talk to a person": WhatsApp (with the shopper's question), Messenger or a call. */
+function Handover({ settings, question }) {
+    const wa = whatsappUrl(settings, question ? `${t('Hi, I was asking your assistant:')} ${question}` : '');
+    const ms = messengerUrl(settings);
+    const call = callUrl(settings);
+    if (!wa && !ms && !call) return null;
+    return (
+        <div className="rounded-xl border border-slate-200 bg-white p-3">
+            <p className="mb-2 text-xs font-medium text-slate-600">{t('Talk to a person')}</p>
+            <div className="flex flex-wrap gap-2">
+                {wa && <a href={wa} target="_blank" rel="noopener noreferrer" className="btn-sm rounded-lg bg-[#25D366] px-3 text-white hover:opacity-90">WhatsApp</a>}
+                {ms && <a href={ms} target="_blank" rel="noopener noreferrer" className="btn-sm rounded-lg bg-[#0084FF] px-3 text-white hover:opacity-90">Messenger</a>}
+                {call && <a href={call} className="btn-outline btn-sm">{t('Call')} {settings.phone}</a>}
+            </div>
+        </div>
+    );
+}
+
 export default function ChatAssistant() {
-    const { assistant } = usePage().props;
+    const { assistant, settings } = usePage().props;
     const [open, setOpen] = useState(false);
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
@@ -89,6 +108,7 @@ export default function ChatAssistant() {
         } catch { /* storage full or blocked */ }
         listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' });
     }, [messages, loading]);
+    useEffect(() => { window.dispatchEvent(new CustomEvent('assistant:open', { detail: open })); }, [open]);
     useEffect(() => {
         if (!open) return undefined;
         inputRef.current?.focus();
@@ -113,7 +133,7 @@ export default function ChatAssistant() {
                 body: JSON.stringify({ messages: next.slice(-12).map(({ role, content: c }) => ({ role, content: c.slice(0, 2000) })) }),
             });
             const body = res.status === 429 ? { reply: t('You are sending messages too fast. Please wait a minute.') } : await res.json().catch(() => ({}));
-            setMessages((m) => [...m, { role: 'assistant', content: body.reply || t('Sorry, something went wrong. Please try again.'), products: body.products ?? [] }]);
+            setMessages((m) => [...m, { role: 'assistant', content: body.reply || t('Sorry, something went wrong. Please try again.'), products: body.products ?? [], handover: !!body.handover || !!body.error }]);
         } catch {
             setMessages((m) => [...m, { role: 'assistant', content: t('Could not connect. Check your internet and try again.'), products: [] }]);
         } finally {
@@ -133,8 +153,9 @@ export default function ChatAssistant() {
                         <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/15"><Icon name="sparkle" className="h-5 w-5" /></span>
                         <div className="min-w-0 flex-1">
                             <p className="truncate font-semibold">{assistant.name}</p>
-                            <p className="text-xs text-white/70">{t('AI assistant · answers can be wrong, check before buying')}</p>
+                            <p className="truncate text-xs text-white/70" title={t('AI assistant · answers can be wrong, check before buying')}>{t('AI assistant · answers can be wrong')}</p>
                         </div>
+                        <button type="button" onClick={() => setMessages((m) => [...m, { role: 'assistant', content: t('Sure — you can reach our team here:'), products: [], handover: true }])} className="rounded-lg p-1.5 text-white/80 hover:bg-white/10 hover:text-white" aria-label={t('Talk to a person')} title={t('Talk to a person')}><Icon name="user" className="h-5 w-5" /></button>
                         {messages.length > 0 && <button type="button" onClick={() => setMessages([])} className="rounded-lg px-2 py-1 text-xs text-white/80 hover:bg-white/10 hover:text-white">{t('New chat')}</button>}
                         <button type="button" onClick={() => setOpen(false)} className="rounded-lg p-1.5 hover:bg-white/10" aria-label={t('Close')}><Icon name="x" className="h-5 w-5" /></button>
                     </header>
@@ -152,6 +173,7 @@ export default function ChatAssistant() {
                             <div key={i} className="max-w-[92%] space-y-2">
                                 <div className="break-words rounded-2xl rounded-tl-sm bg-white px-3.5 py-2.5 text-sm text-slate-700 shadow-sm"><Rich text={m.content} /></div>
                                 {m.products?.map((p) => <ProductRow key={p.id} p={p} />)}
+                                {m.handover && <Handover settings={settings} question={[...messages.slice(0, i)].reverse().find((x) => x.role === 'user')?.content} />}
                             </div>
                         )))}
                         {loading && (
