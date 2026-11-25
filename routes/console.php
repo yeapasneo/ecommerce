@@ -21,6 +21,9 @@ Schedule::command('carts:remind')->hourly()->withoutOverlapping();
 // Morning email listing products that are running low (Settings → General).
 Schedule::command('stock:low-alert')->dailyAt('08:15')->withoutOverlapping();
 
+// Product feed for Google Shopping and Facebook / Instagram shops (when turned on).
+Schedule::command('feeds:generate')->everySixHours()->withoutOverlapping()->runInBackground();
+
 // AI-written product texts for staff to review (only when turned on in Settings → AI).
 Schedule::command('ai:write-drafts')->hourly()->withoutOverlapping();
 

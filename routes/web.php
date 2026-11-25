@@ -8,6 +8,7 @@ use App\Http\Controllers\CartController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\CompareController;
+use App\Http\Controllers\FeedController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PcBuilderController;
@@ -42,6 +43,9 @@ Route::delete('/cart/coupon/remove', [CartController::class, 'removeCoupon'])->n
 
 Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
 Route::post('/checkout/quote', [CheckoutController::class, 'quote'])->name('checkout.quote');
+// Catalogue feeds (same Google RSS format; Meta reads it too).
+Route::get('/feeds/google.xml', [FeedController::class, 'show'])->name('feeds.google');
+Route::get('/feeds/facebook.xml', [FeedController::class, 'show'])->name('feeds.facebook');
 Route::post('/product/{product}/notify', [ProductController::class, 'notifyMe'])->name('product.notify')->middleware('throttle:10,1');
 Route::post('/assistant', [AssistantController::class, 'reply'])->name('assistant')->middleware('throttle:12,1');
 Route::post('/checkout/contact', [CheckoutController::class, 'contact'])->name('checkout.contact')->middleware('throttle:30,1');
@@ -227,6 +231,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         Route::get('settings', [Admin\SettingController::class, 'edit'])->name('settings');
         Route::put('settings', [Admin\SettingController::class, 'update'])->name('settings.update');
         Route::post('settings/test-sms', [Admin\SettingController::class, 'testSms'])->name('settings.test-sms')->middleware('throttle:5,1');
+        Route::post('settings/feeds', [Admin\SettingController::class, 'buildFeed'])->name('settings.feeds')->middleware('throttle:5,1');
         Route::post('settings/test-ai', [Admin\SettingController::class, 'testAi'])->name('settings.test-ai')->middleware('throttle:5,1');
         Route::post('settings/test-email', [Admin\SettingController::class, 'testEmail'])->name('settings.test-email')->middleware('throttle:5,1');
         Route::post('couriers/{courier}/test', [Admin\CourierController::class, 'test'])->name('couriers.test');

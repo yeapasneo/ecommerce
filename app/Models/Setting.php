@@ -114,6 +114,11 @@ class Setting extends Model
         'referral_bonus' => '200', // points for the person who invited
         'referral_welcome' => '100', // points for the new customer
 
+        // Product feeds (Google Shopping, Facebook / Instagram)
+        'feeds_enabled' => '0',
+        'feed_generated_at' => '',
+        'feed_count' => '',
+
         // Inventory
         'low_stock_threshold' => '3',
         'low_stock_alerts' => '0',

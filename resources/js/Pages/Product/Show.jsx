@@ -118,7 +118,11 @@ export default function Show({ product, breadcrumbs, specGroups, reviews, rating
     // Variants: option names in order, the values each can take, and the chosen combination.
     const optionNames = useMemo(() => [...new Set(variants.flatMap((v) => Object.keys(v.options)))], [variants]);
     const optionValues = useMemo(() => Object.fromEntries(optionNames.map((n) => [n, [...new Set(variants.map((v) => v.options[n]).filter(Boolean))]])), [variants, optionNames]);
-    const [picked, setPicked] = useState(() => (variants.find((v) => v.available) ?? variants[0])?.options ?? {});
+    // ?variant=ID (links from shopping ads and feeds) opens that option.
+    const [picked, setPicked] = useState(() => {
+        const wanted = typeof window !== 'undefined' ? Number(new URLSearchParams(window.location.search).get('variant')) : 0;
+        return (variants.find((v) => v.id === wanted) ?? variants.find((v) => v.available) ?? variants[0])?.options ?? {};
+    });
     const variant = variants.length ? variants.find((v) => optionNames.every((n) => v.options[n] === picked[n])) : null;
     const isAvailable = (name, value) => variants.some((v) => v.available && v.options[name] === value && optionNames.every((n) => n === name || v.options[n] === picked[n]));
     const choose = (name, value) => {

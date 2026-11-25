@@ -334,6 +334,21 @@ export default function Settings({ values, secretsSet, gateways, couriers, notif
                                     </div>
                                 </div>
                             </Panel>
+                            <Panel title="Google Shopping & Facebook Shop" icon="cart">
+                                <div className="grid gap-4">
+                                    {toggle('feeds_enabled', 'Product feed', 'A catalogue file of every product with a price and photo, rebuilt every 6 hours. Add the link in Google Merchant Center (Products → Feeds → Scheduled fetch) or Meta Commerce Manager (Catalogue → Data sources → Data feed → Scheduled feed).')}
+                                    {flag(form.data.feeds_enabled) && (
+                                        <>
+                                            <Copy label="Google Merchant Center" value={urls.googleFeed} />
+                                            <Copy label="Meta Commerce Manager (Facebook / Instagram)" value={urls.facebookFeed} />
+                                            <div className="flex flex-wrap items-center gap-3 text-sm text-slate-500">
+                                                <span>{values.feed_generated_at ? `${Number(values.feed_count).toLocaleString()} products · built ${new Date(values.feed_generated_at).toLocaleString()}` : 'Not built yet. Save, then build it.'}</span>
+                                                <Link href="/admin/settings/feeds" method="post" as="button" preserveScroll className="btn-outline btn-sm">Build now</Link>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            </Panel>
                         </div>
                     </div>
                 )}
