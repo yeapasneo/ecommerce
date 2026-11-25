@@ -43,7 +43,7 @@ function BookingForm({ order, courier, label, defaults, onDone }) {
         recipient_name: `${order.first_name} ${order.last_name ?? ''}`.trim(),
         recipient_phone: order.phone,
         recipient_address: `${order.address}, ${order.city}`,
-        cod_amount: order.payment_status === 'paid' ? 0 : order.total,
+        cod_amount: order.payment_status === 'paid' ? 0 : (order.due_amount ?? order.total),
         note: order.notes ?? '',
         city_id: '',
         zone_id: '',
@@ -120,7 +120,7 @@ function BookingForm({ order, courier, label, defaults, onDone }) {
             )}
             <div>
                 <TextInput label="Cash to collect (৳)*" type="number" step="1" min="0" value={form.data.cod_amount} onChange={(ev) => form.setData('cod_amount', ev.target.value)} error={e.cod_amount} />
-                <p className="mt-1 text-xs text-slate-500">{order.payment_status === 'paid' ? 'Order is paid online, so nothing to collect.' : `Order total ${money(order.total)}, unpaid.`}</p>
+                <p className="mt-1 text-xs text-slate-500">{order.payment_status === 'paid' ? 'Order is fully paid, so nothing to collect.' : order.payment_status === 'partial' ? `Total ${money(order.total)}, ${money(order.paid_amount)} already paid.` : `Order total ${money(order.total)}, unpaid.`}</p>
             </div>
             <TextInput label="Note for rider" value={form.data.note} onChange={(ev) => form.setData('note', ev.target.value)} error={e.note} />
             <div className="-mx-6 -mb-6 mt-2 flex justify-end gap-2 border-t border-slate-100 px-6 py-4 sm:col-span-2">

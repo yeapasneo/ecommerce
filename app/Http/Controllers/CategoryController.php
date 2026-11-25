@@ -7,6 +7,7 @@ use App\Models\Category;
 use App\Models\Product;
 use App\Models\Setting;
 use App\Services\ProductListing;
+use App\Support\ProductSearch;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -65,12 +66,12 @@ class CategoryController extends Controller
     public function search(Request $request)
     {
         $term = trim((string) $request->input('q'));
-        $base = Product::active()->when($term !== '', function ($q) use ($term) {
-            $words = preg_split('/\s+/', $term);
-            foreach ($words as $w) {
-                $q->where(fn ($qq) => $qq->where('name', 'ilike', "%{$w}%")->orWhere('sku', 'ilike', "%{$w}%")->orWhere('model', 'ilike', "%{$w}%"));
-            }
-        });
+        $base = ProductSearch::apply(Product::active(), $term);
+        // Most relevant first unless the shopper picked a sort order.
+        if (! $request->filled('sort')) {
+            $request->merge(['sort' => 'relevance']);
+            ProductSearch::rank($base, $term);
+        }
 
         seo()->title($term !== '' ? "Search results for \"{$term}\"" : 'All Products')->noindex();
 
@@ -92,7 +93,7 @@ class CategoryController extends Controller
         }
 
         return response()->json(
-            Product::active()->where('name', 'ilike', "%{$term}%")->orderByDesc('views')->take(8)
+            ProductSearch::rank(ProductSearch::apply(Product::active(), $term), $term)->orderByDesc('views')->take(8)
                 ->get()->map(fn ($p) => ['name' => $p->name, 'slug' => $p->slug, 'price' => $p->price, 'image_url' => $p->image_url])
         );
     }

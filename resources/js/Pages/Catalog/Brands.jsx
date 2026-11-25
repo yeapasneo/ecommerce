@@ -2,13 +2,14 @@ import { Link } from '@inertiajs/react';
 import Breadcrumbs from '../../Components/Breadcrumbs';
 import Seo from '../../Components/Seo';
 import ShopLayout from '../../Layouts/ShopLayout';
+import { t } from '../../lib/i18n';
 
 export default function Brands({ brands }) {
     return (
         <div className="container-x py-4">
-            <Seo title="All Brands" />
+            <Seo title={t('All Brands')} />
             <Breadcrumbs items={[{ name: 'Brands' }]} />
-            <h1 className="mb-4 text-2xl font-bold">All Brands</h1>
+            <h1 className="mb-4 text-2xl font-bold">{t('All Brands')}</h1>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
                 {brands.map((b) => (
                     <Link key={b.id} href={`/brand/${b.slug}`} className="card flex flex-col items-center justify-center gap-1 p-5 text-center hover:shadow-md">

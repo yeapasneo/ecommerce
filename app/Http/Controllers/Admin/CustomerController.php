@@ -37,6 +37,15 @@ class CustomerController extends Controller
         if ($user->id === $request->user()->id) {
             return back()->with('error', 'You cannot change your own access.');
         }
+        // Granting or removing admin access is for staff managers only (Staff page).
+        if (array_key_exists('is_admin', $data) && (bool) $data['is_admin'] !== (bool) $user->is_admin) {
+            abort_unless($request->user()->hasPermission('staff'), 403, 'Only owners can change admin access. Use the Staff page.');
+            $data['role'] = $data['is_admin'] ? 'manager' : null;
+        }
+        // Order managers can block customers, but not other staff.
+        if ($user->is_admin && ! $request->user()->hasPermission('staff')) {
+            abort(403, 'Only owners can change staff accounts.');
+        }
         $user->update($data);
 
         return back()->with('success', 'Customer updated.');

@@ -7,7 +7,15 @@ use App\Models\Setting;
 /** Applies the SMTP details saved in Settings → Notifications (otherwise the .env MAIL_* values are used). */
 class MailConfig
 {
+    /** Re-apply after settings change (rebuilds any mailer already created). */
     public static function apply(): void
+    {
+        self::configure();
+        app('mail.manager')->forgetMailers();
+    }
+
+    /** Point the mail config at the saved settings. Runs when the mailer is first used (AppServiceProvider). */
+    public static function configure(): void
     {
         if ($host = Setting::get('mail_host')) {
             config([
@@ -23,7 +31,6 @@ class MailConfig
             config(['mail.from.address' => $from]);
         }
         config(['mail.from.name' => Setting::get('mail_from_name') ?: Setting::get('site_name', config('app.name'))]);
-        app('mail.manager')->forgetMailers();
     }
 
     public static function isConfigured(): bool

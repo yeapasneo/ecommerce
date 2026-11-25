@@ -6,31 +6,40 @@ import Icon from '../Components/Icon';
 import Seo from '../Components/Seo';
 
 // [group label, [href, icon, label, badge key]]
+// [group label, [href, icon, label, badge key, permission]]
 const nav = [
     [null, [
         ['/admin', 'dashboard', 'Dashboard'],
-        ['/admin/orders', 'receipt', 'Orders', 'orders'],
-        ['/admin/products', 'box', 'Products'],
-        ['/admin/categories', 'folder', 'Categories'],
-        ['/admin/brands', 'tag', 'Brands'],
-        ['/admin/customers', 'users', 'Customers'],
-        ['/admin/blocked-phones', 'shield', 'Blocked Numbers'],
+        ['/admin/orders', 'receipt', 'Orders', 'orders', 'orders'],
+        ['/admin/products', 'box', 'Products', null, 'catalog'],
+        ['/admin/categories', 'folder', 'Categories', null, 'catalog'],
+        ['/admin/brands', 'tag', 'Brands', null, 'catalog'],
+        ['/admin/customers', 'users', 'Customers', null, 'orders'],
+        ['/admin/abandoned-carts', 'cart', 'Abandoned Carts', null, 'orders'],
+        ['/admin/blocked-phones', 'shield', 'Blocked Numbers', null, 'orders'],
+        ['/admin/reports', 'dashboard', 'Reports', null, 'reports'],
     ]],
     ['Marketing', [
-        ['/admin/coupons', 'percent', 'Coupons'],
-        ['/admin/offers', 'gift', 'Offers'],
-        ['/admin/banners', 'image', 'Banners & Sliders'],
+        ['/admin/flash-sales', 'gift', 'Flash Sales', null, 'marketing'],
+        ['/admin/coupons', 'percent', 'Coupons', null, 'marketing'],
+        ['/admin/offers', 'megaphone', 'Offers', null, 'marketing'],
+        ['/admin/banners', 'image', 'Banners & Sliders', null, 'marketing'],
     ]],
     ['Storefront', [
-        ['/admin/pc-components', 'cpu', 'PC Builder Parts'],
-        ['/admin/pages', 'file', 'Pages'],
+        ['/admin/pc-components', 'cpu', 'PC Builder Parts', null, 'catalog'],
+        ['/admin/pages', 'file', 'Pages', null, 'marketing'],
     ]],
     ['Engagement', [
-        ['/admin/reviews', 'star', 'Reviews', 'reviews'],
-        ['/admin/questions', 'chat', 'Questions', 'questions'],
-        ['/admin/messages', 'mail', 'Messages', 'messages'],
+        ['/admin/reviews', 'star', 'Reviews', 'reviews', 'engagement'],
+        ['/admin/questions', 'chat', 'Questions', 'questions', 'engagement'],
+        ['/admin/messages', 'mail', 'Messages', 'messages', 'engagement'],
     ]],
-    ['Settings', [['/admin/settings', 'settings', 'Store Settings'], ['/admin/system', 'dashboard', 'System Status']]],
+    ['Settings', [
+        ['/admin/staff', 'users', 'Staff & Roles', null, 'staff'],
+        ['/admin/activity', 'refresh', 'Activity Log', null, 'staff'],
+        ['/admin/settings', 'settings', 'Store Settings', null, 'settings'],
+        ['/admin/system', 'info', 'System Status', null, 'settings'],
+    ]],
 ];
 
 const readCollapsed = () => {
@@ -51,6 +60,10 @@ export default function AdminLayout({ title, actions, back, count, subtitle, hea
     const [drawer, setDrawer] = useState(false);
     const user = props.auth.user;
     const counts = props.adminCounts ?? {};
+    const perms = user.permissions ?? [];
+    const visibleNav = nav
+        .map(([group, items]) => [group, items.filter((i) => !i[4] || perms.includes(i[4]))])
+        .filter(([, items]) => items.length > 0);
     const siteName = props.settings.site_name ?? 'Store';
     const path = url.split('?')[0];
     const isActive = (href) => (href === '/admin' ? path === '/admin' : path.startsWith(href));
@@ -72,7 +85,7 @@ export default function AdminLayout({ title, actions, back, count, subtitle, hea
                 {!mini && <span className="truncate text-xl font-bold tracking-tight text-slate-900">{siteName}</span>}
             </Link>
             <div className="flex-1 overflow-y-auto px-3 py-3">
-                {nav.map(([group, items], gi) => (
+                {visibleNav.map(([group, items], gi) => (
                     <div key={gi} className={gi ? 'mt-3.5' : ''}>
                         {group && !mini && <p className="px-3 pb-1 text-xs font-medium text-slate-500">{group}</p>}
                         {group && mini && <div className="mx-3 mb-2 border-t border-slate-100" />}

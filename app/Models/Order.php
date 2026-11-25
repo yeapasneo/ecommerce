@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Couriers\CourierManager;
 use App\Messaging\OrderNotifier;
+use App\Models\Concerns\LogsActivity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -11,9 +12,11 @@ use Illuminate\Support\Facades\DB;
 
 class Order extends Model
 {
+    use LogsActivity;
+
     public const STATUSES = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
 
-    public const PAYMENT_STATUSES = ['unpaid', 'paid', 'refunded'];
+    public const PAYMENT_STATUSES = ['unpaid', 'partial', 'paid', 'refunded'];
 
     /** Every payment method an order can carry ('online' is kept for older orders). */
     public const PAYMENT_METHODS = [
@@ -33,7 +36,7 @@ class Order extends Model
     protected $fillable = [
         'order_number', 'user_id', 'first_name', 'last_name', 'email', 'phone', 'address', 'city', 'notes',
         'delivery_method', 'payment_method', 'payment_status', 'status', 'subtotal', 'delivery_charge', 'discount', 'total', 'coupon_code',
-        'gateway_ref', 'transaction_id', 'paid_at', 'source',
+        'gateway_ref', 'transaction_id', 'paid_at', 'source', 'tax', 'paid_amount',
         'courier', 'courier_consignment_id', 'courier_tracking_code', 'courier_status', 'courier_fee', 'courier_cod', 'courier_sent_at', 'courier_status_at',
     ];
 
@@ -42,6 +45,8 @@ class Order extends Model
         'delivery_charge' => 'float',
         'discount' => 'float',
         'total' => 'float',
+        'tax' => 'float',
+        'paid_amount' => 'float',
         'paid_at' => 'datetime',
         'courier_fee' => 'float',
         'courier_cod' => 'float',
@@ -49,7 +54,20 @@ class Order extends Model
         'courier_status_at' => 'datetime',
     ];
 
-    protected $appends = ['courier_tracking_url'];
+    protected $appends = ['courier_tracking_url', 'due_amount'];
+
+    /** What the customer still owes. */
+    public function getDueAmountAttribute(): float
+    {
+        if (! array_key_exists('total', $this->attributes)) {
+            return 0;
+        }
+        if (($this->attributes['payment_status'] ?? null) === 'paid') {
+            return 0;
+        }
+
+        return max(0, round((float) $this->attributes['total'] - (float) ($this->attributes['paid_amount'] ?? 0), 2));
+    }
 
     public function getCourierTrackingUrlAttribute(): ?string
     {
@@ -81,6 +99,7 @@ class Order extends Model
             }
             $order->update([
                 'payment_status' => 'paid',
+                'paid_amount' => $order->total,
                 'payment_method' => $gateway,
                 'transaction_id' => $transactionId,
                 'gateway_ref' => $reference ?? $order->gateway_ref,

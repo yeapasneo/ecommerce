@@ -21,7 +21,8 @@ class CartService
 
     public function items(): Collection
     {
-        return $this->query()->with('product')->orderBy('id')->get()->filter(fn ($i) => $i->product);
+        return $this->query()->with('product', 'variant')->orderBy('id')->get()
+            ->filter(fn ($i) => $i->product && (! $i->variant_id || $i->variant));
     }
 
     public function count(): int
@@ -29,9 +30,9 @@ class CartService
         return (int) $this->query()->sum('quantity');
     }
 
-    public function add(int $productId, int $quantity = 1): void
+    public function add(int $productId, int $quantity = 1, ?int $variantId = null): void
     {
-        $item = $this->query()->where('product_id', $productId)->first();
+        $item = $this->query()->where('product_id', $productId)->where('variant_id', $variantId)->first();
         if ($item) {
             $item->update(['quantity' => min(99, $item->quantity + $quantity)]);
 
@@ -41,6 +42,7 @@ class CartService
             'user_id' => auth()->id(),
             'session_id' => auth()->check() ? null : session()->getId(),
             'product_id' => $productId,
+            'variant_id' => $variantId,
             'quantity' => min(99, max(1, $quantity)),
         ]);
     }
@@ -66,7 +68,7 @@ class CartService
     {
         $guestItems = CartItem::whereNull('user_id')->where('session_id', $oldSessionId)->get();
         foreach ($guestItems as $guest) {
-            $existing = CartItem::where('user_id', $userId)->where('product_id', $guest->product_id)->first();
+            $existing = CartItem::where('user_id', $userId)->where('product_id', $guest->product_id)->where('variant_id', $guest->variant_id)->first();
             if ($existing) {
                 $existing->update(['quantity' => min(99, $existing->quantity + $guest->quantity)]);
                 $guest->delete();
@@ -78,7 +80,7 @@ class CartService
 
     public function subtotal(?Collection $items = null): float
     {
-        return (float) ($items ?? $this->items())->sum(fn ($i) => $i->product->price * $i->quantity);
+        return (float) ($items ?? $this->items())->sum(fn ($i) => $i->unitPrice() * $i->quantity);
     }
 
     public static function deliveryCharge(string $method, string $city, float $subtotal): float
@@ -125,8 +127,14 @@ class CartService
             'items' => $items->map(fn ($i) => [
                 'id' => $i->id,
                 'quantity' => $i->quantity,
-                'total' => $i->product->price * $i->quantity,
-                'product' => $i->product->toCard() + ['sku' => $i->product->sku, 'purchasable' => $i->product->isPurchasable()],
+                'total' => $i->unitPrice() * $i->quantity,
+                'variant' => $i->variant ? ['id' => $i->variant->id, 'name' => $i->variant->name] : null,
+                'product' => array_merge($i->product->toCard(), [
+                    'sku' => $i->variant?->sku ?: $i->product->sku,
+                    'price' => $i->unitPrice(),
+                    'image_url' => $i->variant?->image_url ?: $i->product->image_url,
+                    'purchasable' => $i->variant ? $i->variant->isPurchasable() : $i->product->isPurchasable(),
+                ]),
             ])->values(),
             'subtotal' => $subtotal,
             'coupon' => $coupon ? ['code' => $coupon->code, 'discount' => $coupon->discountFor($subtotal)] : null,

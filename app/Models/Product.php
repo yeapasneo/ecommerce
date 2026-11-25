@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\LogsActivity;
+use App\Support\FlashSales;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -11,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Product extends Model
 {
     use HasFactory;
+    use LogsActivity;
 
     public const STOCK_STATUSES = [
         'in_stock' => 'In Stock',
@@ -22,7 +25,11 @@ class Product extends Model
     protected $fillable = [
         'category_id', 'brand_id', 'name', 'slug', 'sku', 'model', 'price', 'regular_price', 'stock', 'stock_status',
         'key_features', 'description', 'image', 'warranty_months', 'is_active', 'is_featured', 'meta_title', 'meta_description', 'meta_keywords',
+        'has_variants',
     ];
+
+    /** Storefront prices include running flash sales; the admin panel turns this off to edit real prices. */
+    public static bool $flashPrices = true;
 
     protected $casts = [
         'key_features' => 'array',
@@ -30,6 +37,7 @@ class Product extends Model
         'regular_price' => 'float',
         'is_active' => 'boolean',
         'is_featured' => 'boolean',
+        'has_variants' => 'boolean',
     ];
 
     protected $appends = ['image_url', 'discount', 'stock_label'];
@@ -54,6 +62,11 @@ class Product extends Model
         return $this->hasMany(ProductSpec::class)->orderBy('sort_order');
     }
 
+    public function variants(): HasMany
+    {
+        return $this->hasMany(ProductVariant::class)->orderBy('sort_order')->orderBy('id');
+    }
+
     public function reviews(): HasMany
     {
         return $this->hasMany(Review::class);
@@ -74,12 +87,52 @@ class Product extends Model
         return media_url($this->attributes['image'] ?? null);
     }
 
+    /** The running flash sale for this product (storefront only). */
+    public function flashSale(): ?array
+    {
+        if (! static::$flashPrices || ! isset($this->attributes['id'])) {
+            return null;
+        }
+
+        return app(FlashSales::class)->for((int) $this->attributes['id']);
+    }
+
+    /** Price without any flash sale. */
+    public function basePrice(): float
+    {
+        return (float) ($this->attributes['price'] ?? 0);
+    }
+
+    public function getPriceAttribute($value): ?float
+    {
+        if ($value === null) {
+            return null;
+        }
+        $sale = $this->flashSale();
+
+        return $sale && $sale['price'] < (float) $value ? $sale['price'] : (float) $value;
+    }
+
+    /** During a flash sale the old price shows as the regular (crossed-out) price. */
+    public function getRegularPriceAttribute($value): ?float
+    {
+        $regular = $value === null ? null : (float) $value;
+        if ($this->flashSale() && isset($this->attributes['price'])) {
+            return max($regular ?? 0, $this->basePrice());
+        }
+
+        return $regular;
+    }
+
     public function getDiscountAttribute(): float
     {
-        $regular = $this->attributes['regular_price'] ?? null;
-        $price = $this->attributes['price'] ?? null;
+        if (! array_key_exists('price', $this->attributes)) {
+            return 0;
+        }
+        $price = $this->price;
+        $regular = array_key_exists('regular_price', $this->attributes) ? $this->regular_price : null;
 
-        return $regular && $price !== null && $regular > $price ? (float) $regular - (float) $price : 0;
+        return $regular && $price !== null && $regular > $price ? $regular - $price : 0;
     }
 
     public function getStockLabelAttribute(): ?string
@@ -108,6 +161,8 @@ class Product extends Model
             'stock_status' => $this->stock_status,
             'stock_label' => $this->stock_label,
             'key_features' => array_slice($this->key_features ?? [], 0, 4),
+            'has_variants' => (bool) ($this->attributes['has_variants'] ?? false),
+            'flash_ends_at' => $this->flashSale()['ends_at'] ?? null,
         ];
     }
 }

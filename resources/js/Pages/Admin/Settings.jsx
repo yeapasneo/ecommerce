@@ -209,6 +209,15 @@ export default function Settings({ values, secretsSet, gateways, couriers, notif
                                     {text('delivery_charge_outside', 'Outside Dhaka (৳)', { type: 'number' })}
                                     {text('express_delivery_charge', 'Express Delivery (৳)', { type: 'number' })}
                                     {text('free_delivery_over', 'Free delivery over (৳)', { type: 'number', hint: '0 to disable' })}
+                                    {text('vat_percent', 'Default VAT on staff orders (%)', { type: 'number', step: '0.5', hint: 'Pre-filled on Create Order; 0 for none' })}
+                                    <div>
+                                        <label className="label" htmlFor="default-locale">Storefront language</label>
+                                        <select id="default-locale" className="input" value={form.data.default_locale ?? 'en'} onChange={set('default_locale')}>
+                                            <option value="en">English</option>
+                                            <option value="bn">বাংলা (Bangla)</option>
+                                        </select>
+                                        <p className="mt-1 text-xs text-slate-500">Shoppers can switch in the header. Product names and specs stay as entered.</p>
+                                    </div>
                                 </div>
                             </Panel>
                             <Panel title="Social Links" icon="megaphone">
@@ -296,6 +305,18 @@ export default function Settings({ values, secretsSet, gateways, couriers, notif
 
                 {tab === 'payments' && (
                     <div className="space-y-6">
+                        <Panel title="EMI Prices" icon="card" collapsible={false}>
+                            <div className="grid items-start gap-5 lg:grid-cols-2">
+                                <div className="space-y-4">
+                                    {toggle('emi_enabled', 'Show EMI prices on product pages', 'Shows "EMI from ৳X/month" with a table of plans. Customers pay by card and their bank converts it to EMI.')}
+                                    {text('emi_min_amount', 'Only for products from (৳)', { type: 'number', min: 0 })}
+                                </div>
+                                <div className="space-y-4">
+                                    {text('emi_plans', 'Plans (months:interest %)', { hint: 'Comma separated, e.g. 3:0, 6:0, 9:5, 12:7 — 0 means 0% EMI' })}
+                                    <TextArea label="Note under the table" rows={2} value={form.data.emi_note ?? ''} onChange={set('emi_note')} />
+                                </div>
+                            </div>
+                        </Panel>
                         <Panel title="Cash on Delivery" icon="truck" collapsible={false}>
                             {toggle('cod_enabled', 'Accept cash on delivery', 'If every option is off, cash on delivery is still offered so customers can always order.')}
                         </Panel>
@@ -394,6 +415,16 @@ export default function Settings({ values, secretsSet, gateways, couriers, notif
                                     {flag(form.data.checkout_otp) && !notifications.smsReady && <p className="mt-2 text-xs text-amber-700">SMS isn't set up yet, so checkout won't ask for a code until it is.</p>}
                                 </div>
                                 <TextArea label="Code message" rows={2} value={form.data.sms_template_otp ?? ''} onChange={set('sms_template_otp')} error={e.sms_template_otp} hint="Must include {code}." />
+                            </div>
+                        </Panel>
+
+                        <Panel title="Abandoned Cart Reminders" icon="cart">
+                            <div className="grid items-start gap-5 lg:grid-cols-2">
+                                <div className="space-y-4">
+                                    {toggle('abandoned_cart_enabled', 'Remind shoppers who leave checkout', 'Saves the cart once a shopper types a phone or email at checkout, then sends one SMS and/or email with a link that restores the cart.')}
+                                    {text('abandoned_cart_delay_hours', 'Send the reminder after (hours)', { type: 'number', min: 1, max: 72 })}
+                                </div>
+                                <TextArea label="Reminder SMS" rows={3} value={form.data.sms_template_abandoned_cart ?? ''} onChange={set('sms_template_abandoned_cart')} error={e.sms_template_abandoned_cart} hint="Placeholders: {name}, {total}, {link}, {site}" />
                             </div>
                         </Panel>
 

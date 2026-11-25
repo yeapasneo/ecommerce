@@ -57,6 +57,7 @@ class ImportedCatalogSeeder extends Seeder
         foreach (array_chunk($products, 300) as $chunk) {
             DB::transaction(function () use ($chunk, $brandIds, &$skus) {
                 $specRows = [];
+                $imageRows = [];
                 foreach ($chunk as $p) {
                     $categoryId = $this->categoryIds[$this->pathKey($p['category_path'])] ?? null;
                     if (! $categoryId || empty($p['name'])) {
@@ -66,6 +67,12 @@ class ImportedCatalogSeeder extends Seeder
                     foreach ($p['specs'] ?? [] as $i => $s) {
                         $specRows[] = ['product_id' => $product->id, 'group' => $s['group'], 'name' => $s['name'], 'value' => $s['value'], 'sort_order' => $i];
                     }
+                    foreach (self::galleryPaths($p) as $i => $path) {
+                        $imageRows[] = ['product_id' => $product->id, 'path' => $path, 'sort_order' => $i + 1, 'created_at' => now(), 'updated_at' => now()];
+                    }
+                }
+                foreach (array_chunk($imageRows, 1000) as $rows) {
+                    DB::table('product_images')->insert($rows);
                 }
                 foreach (array_chunk($specRows, 1000) as $rows) {
                     DB::table('product_specs')->insert($rows);
@@ -280,5 +287,14 @@ class ImportedCatalogSeeder extends Seeder
             }
             PcComponent::create(['name' => $name, 'slug' => Str::slug($name), 'category_id' => $categoryId, 'is_required' => $required, 'section' => $section, 'sort_order' => $i]);
         }
+    }
+
+    /** Extra photos downloaded by scripts/crawler/gallery.py that exist on disk. */
+    public static function galleryPaths(array $p): array
+    {
+        return collect($p['gallery_files'] ?? [])
+            ->map(fn ($f) => '/images/products/'.ltrim($f, '/'))
+            ->filter(fn ($path) => is_file(public_path(ltrim($path, '/'))))
+            ->values()->all();
     }
 }

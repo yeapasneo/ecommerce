@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\LogsActivity;
 use Illuminate\Database\Eloquent\Model;
 
 class Coupon extends Model
 {
+    use LogsActivity;
+
     protected $fillable = ['code', 'type', 'value', 'min_order', 'max_discount', 'usage_limit', 'used', 'starts_at', 'expires_at', 'is_active'];
 
     protected $casts = [

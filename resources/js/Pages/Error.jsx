@@ -1,6 +1,7 @@
 import { Link } from '@inertiajs/react';
 import Seo from '../Components/Seo';
 import ShopLayout from '../Layouts/ShopLayout';
+import { t } from '../lib/i18n';
 
 const messages = {
     403: ['Forbidden', 'Sorry, you are not allowed to access this page.'],
@@ -17,7 +18,7 @@ export default function Error({ status }) {
             <p className="text-6xl font-black text-brand-700">{status}</p>
             <h1 className="mt-2 text-2xl font-bold">{title}</h1>
             <p className="mt-2 text-slate-500">{text}</p>
-            <Link href="/" className="btn-primary mt-6">Back to Home</Link>
+            <Link href="/" className="btn-primary mt-6">{t('Back to Home')}</Link>
         </div>
     );
 }

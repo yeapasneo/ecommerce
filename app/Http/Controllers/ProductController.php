@@ -7,6 +7,7 @@ use App\Models\Question;
 use App\Models\Review;
 use App\Models\Setting;
 use App\Support\Analytics;
+use App\Support\Emi;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -28,6 +29,16 @@ class ProductController extends Controller
         return Inertia::render('Product/Show', [
             'product' => $product,
             'breadcrumbs' => $product->category->breadcrumbs(),
+            'variants' => $product->has_variants
+                ? $product->variants()->where('is_active', true)->get()->each->setRelation('product', $product)
+                    ->map(fn ($v) => [
+                        'id' => $v->id, 'name' => $v->name, 'options' => $v->options, 'sku' => $v->sku ?: $product->sku,
+                        'price' => $v->price, 'regular_price' => $product->flashSale() ? max($v->basePrice(), (float) $v->regular_price) : $v->regular_price,
+                        'stock' => $v->stock, 'image_url' => $v->image_url, 'available' => $v->isPurchasable(),
+                    ])->values()
+                : [],
+            'flash' => $product->flashSale(),
+            'emi' => Emi::plans((float) $product->price),
             'specGroups' => $product->specs->groupBy('group')->map(fn ($g, $name) => ['group' => $name, 'items' => $g->values()])->values(),
             'reviews' => $reviews,
             'rating' => ['average' => round((float) $reviews->avg('rating'), 1), 'count' => $reviews->count()],

@@ -7,6 +7,7 @@ use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\Setting;
+use App\Support\FlashSales;
 use Inertia\Inertia;
 
 class HomeController extends Controller
@@ -42,8 +43,26 @@ class HomeController extends Controller
             'sideBanners' => Banner::where('is_active', true)->where('position', 'side')->orderBy('sort_order')->take(2)->get(),
             'featuredCategories' => $featuredCategories,
             'featuredProducts' => Product::active()->where('is_featured', true)->latest('id')->take(12)->get()->map->toCard(),
+            'flashSale' => $this->flashSale(),
             'newArrivals' => Product::active()->latest('id')->take(6)->get()->map->toCard(),
             'brands' => Brand::where('is_active', true)->orderBy('name')->take(12)->get(),
         ]);
+    }
+
+    /** Products in the running flash sale(s), ending soonest first. */
+    protected function flashSale(): ?array
+    {
+        $sales = app(FlashSales::class);
+        $ids = collect($sales->active())->filter(fn ($s, $id) => $sales->for((int) $id))->sortBy('ends_at')->keys()->take(12);
+        if ($ids->isEmpty()) {
+            return null;
+        }
+        $first = $sales->for((int) $ids->first());
+
+        return [
+            'title' => $first['title'],
+            'ends_at' => $first['ends_at'],
+            'products' => Product::active()->whereIn('id', $ids)->get()->map->toCard()->values(),
+        ];
     }
 }

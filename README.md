@@ -11,9 +11,13 @@ A full e-commerce store for computers, components and gadgets, with a complete a
   - price range, availability and brand;
   - per-category **specification filters** (for example RAM, Socket, Display Size);
   - sorting and page size.
-- **Search suggestions** as you type in the header.
+- **Search that forgives typos** ("smasung galaxy", "logitec mouse", "ryzn 5 7600"), using PostgreSQL trigram matching. The best matches come first, and suggestions appear as you type in the header.
+- **Product variants** such as size, colour or storage. Each option set has its own price, stock, SKU and photo, and the shopper picks the options on the product page.
+- **Flash sales** with a countdown on the home page and the product page. The sale price applies automatically between the start and end times.
+- **EMI prices**: a table of monthly instalments on the product page, built from the plans set in Settings → Payments.
+- **Bangla language option**: an English ⇄ বাংলা switch in the header. Translations are in `lang/bn.json`, and the default language is set in Settings → General.
 - **Product page:**
-  - image gallery, key features, price and discount, stock status, product code, brand and warranty;
+  - image gallery (up to 3 photos per imported product), key features, price and discount, stock status, product code, brand and warranty;
   - tabs for **specifications, description, questions and reviews**;
   - related products.
 - **Compare:** up to 3 products side by side, specification by specification.
@@ -42,7 +46,14 @@ A full e-commerce store for computers, components and gadgets, with a complete a
   - filter by status, payment status, date or search;
   - update status and payment status with comments;
   - automatic restock on cancel, history timeline, printable invoice.
-- **Customers:** order count and total spent, block or unblock, grant or remove admin.
+- **Orders can be edited** until they are shipped: items, prices, VAT, discount, delivery and customer details. Stock moves with each change, and the edit is noted in the order history.
+- **VAT/Tax and partial payments** on Create Order and on the order page. The amount still due is shown and used as the courier COD amount.
+- **Staff & Roles:** Owner, Manager, Order manager, Catalog manager and Accountant. Each role sees only its areas of the panel. The shop always keeps at least one active owner.
+- **Activity Log:** who created, changed or deleted what (products, orders, coupons, settings and more), with the old and new values and the IP address, plus staff sign-ins.
+- **Sales Reports:** revenue, orders, average order, items sold, VAT, discounts, collected vs. still to collect, a daily chart, and the top products, categories, payment methods, order sources and cities, compared with the previous period. Orders and products can be exported to CSV that opens in Excel.
+- **Flash Sales:** pick products and sale prices for a time window.
+- **Abandoned Carts:** checkouts that were started but not finished. The shopper gets one reminder by SMS and/or email after a set delay, with a link that restores their cart. Carts are marked recovered when the shopper orders.
+- **Customers:** order count and total spent, block or unblock, and grant or remove admin (Owner only).
 - **Coupons, Banners and Sliders, Offers, Pages, PC Builder parts.**
 - **Moderation:** approve reviews, answer product questions, read contact messages and see newsletter subscribers.
 - **Settings:** store name, contact details, delivery charges, notice and social links.
@@ -108,6 +119,14 @@ php artisan migrate:fresh --seed
 
 Use `--no-fetch` to skip fetching product pages and `--limit N` for a quick partial crawl.
 
+**Extra photos:** `scripts/crawler/gallery.py` saves up to two more photos per product to `public/images/products/gallery/`. It can be stopped and restarted. Afterwards, rebuild the catalog file and attach the photos to products already in the database:
+
+```bash
+python3 scripts/crawler/gallery.py --workers 8
+python3 scripts/crawler/crawl.py --no-fetch --images public/images/products --out database/data/catalog.json.gz
+php artisan catalog:import-gallery
+```
+
 ## SEO
 
 - Every storefront page sends its title, description, canonical URL, robots, Open Graph / Twitter tags and JSON-LD in the first HTML response, so crawlers and link previews don't need JavaScript. The same tags are updated on client-side navigation (`app/Support/Seo.php`, `resources/js/Components/Seo.jsx`).
@@ -147,7 +166,7 @@ Pathao was tested end to end against its public sandbox. Steadfast has no sandbo
 - **Checkout verification**: optional 6-digit SMS code before a customer can place an order.
 - **Fraud check**: each order shows the customer's delivered vs. cancelled record in this shop, and across couriers with a BD Courier API key. Mark a number as fraud from the order page or **Blocked Numbers**; checkout then refuses cash on delivery (or all orders) for it.
 - **System Status** (Settings → System Status): a go-live checklist (production mode, HTTPS, demo password, queue worker, scheduler, backups, email, SMS, sandbox modes) with how to fix each item, plus database backups to download.
-- **Scheduled jobs** (`routes/console.php`): courier status sync every 30 minutes, nightly database backup at 02:30, weekly clean-ups. Needs one cron entry.
+- **Scheduled jobs** (`routes/console.php`): abandoned-cart reminders every hour, courier status sync every 30 minutes, nightly database backup at 02:30, weekly clean-ups. Needs one cron entry.
 
 Deployment steps, Nginx and Supervisor configs are in **[DEPLOY.md](DEPLOY.md)** and `deploy/`.
 
@@ -161,8 +180,8 @@ php artisan test
 ```
 
 ## Notes
-- The bKash and card payment options record the order as unpaid. No payment gateway is connected yet; staff mark the order paid in the admin panel. A gateway (for example SSLCommerz or the bKash API) would plug into `CheckoutController@store`.
-- Password reset emails use the mail driver in `.env` (`log` by default).
+- All emails, including password resets, use the SMTP settings saved in Settings → Notifications. When none are saved, they fall back to the mail driver in `.env`.
+- Times use `APP_TIMEZONE` (Asia/Dhaka by default), so flash sale start and end times mean Bangladesh time.
 - Product descriptions and pages accept HTML from admins.
 
 ## Project structure

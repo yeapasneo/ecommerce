@@ -3,6 +3,7 @@ import Breadcrumbs from '../Components/Breadcrumbs';
 import Icon from '../Components/Icon';
 import Seo from '../Components/Seo';
 import ShopLayout from './ShopLayout';
+import { t } from '../lib/i18n';
 
 const links = [
     ['/account', 'dashboard', 'Dashboard'],
@@ -35,7 +36,7 @@ export default function AccountLayout({ title, children }) {
                                 );
                             })}
                             <button onClick={() => router.post('/logout')} className="flex w-full shrink-0 items-center gap-3 px-4 py-3 text-left text-sm text-red-600 hover:bg-red-50">
-                                <Icon name="logout" className="h-4 w-4" /> Logout
+                                <Icon name="logout" className="h-4 w-4" /> {t('Logout')}
                             </button>
                         </nav>
                     </aside>

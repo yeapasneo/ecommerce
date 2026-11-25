@@ -3,6 +3,17 @@ import { useEffect, useState } from 'react';
 import Flash from '../Components/Flash';
 import Icon from '../Components/Icon';
 import SearchBox from '../Components/SearchBox';
+import { locale, t } from '../lib/i18n';
+
+/** English ⇄ বাংলা. A full page load so every text switches at once. */
+function LanguageSwitch({ className = '' }) {
+    const other = locale() === 'bn' ? ['en', 'English'] : ['bn', 'বাংলা'];
+    return (
+        <a href={`/locale/${other[0]}`} className={`items-center gap-1 text-sm font-semibold ${className}`} aria-label={`${t('Language')}: ${other[1]}`} lang={other[0]}>
+            <Icon name="chat" className="h-4 w-4" /> {other[1]}
+        </a>
+    );
+}
 
 function Logo({ name }) {
     return (
@@ -91,14 +102,15 @@ function MobileMenu({ menu, open, onClose, user }) {
             <div className="absolute inset-0 bg-black/50" onClick={onClose} />
             <aside className="absolute inset-y-0 left-0 w-80 max-w-[85%] overflow-y-auto bg-white shadow-xl">
                 <div className="flex items-center justify-between bg-brand-900 px-4 py-3 text-white">
-                    <span className="font-semibold">Menu</span>
-                    <button onClick={onClose} aria-label="Close menu"><Icon name="x" /></button>
+                    <span className="font-semibold">{t('Menu')}</span>
+                    <button onClick={onClose} aria-label={t('Close menu')}><Icon name="x" /></button>
                 </div>
                 <div className="grid grid-cols-2 gap-2 border-b border-slate-200 p-3 text-sm">
-                    <Link href="/offers" onClick={onClose} className="btn-outline btn-sm"><Icon name="gift" className="h-4 w-4" />Offers</Link>
-                    <Link href="/pc-builder" onClick={onClose} className="btn-outline btn-sm"><Icon name="cpu" className="h-4 w-4" />PC Builder</Link>
-                    <Link href="/compare" onClick={onClose} className="btn-outline btn-sm"><Icon name="compare" className="h-4 w-4" />Compare</Link>
-                    <Link href={user ? '/account' : '/login'} onClick={onClose} className="btn-outline btn-sm"><Icon name="user" className="h-4 w-4" />{user ? 'Account' : 'Login'}</Link>
+                    <Link href="/offers" onClick={onClose} className="btn-outline btn-sm"><Icon name="gift" className="h-4 w-4" />{t('Offers')}</Link>
+                    <Link href="/pc-builder" onClick={onClose} className="btn-outline btn-sm"><Icon name="cpu" className="h-4 w-4" />{t('PC Builder')}</Link>
+                    <Link href="/compare" onClick={onClose} className="btn-outline btn-sm"><Icon name="compare" className="h-4 w-4" />{t('Compare')}</Link>
+                    <Link href={user ? '/account' : '/login'} onClick={onClose} className="btn-outline btn-sm"><Icon name="user" className="h-4 w-4" />{user ? t('Account') : t('Login')}</Link>
+                    <LanguageSwitch className="btn-outline btn-sm" />
                 </div>
                 <ul>{renderItems(menu)}</ul>
             </aside>
@@ -125,37 +137,37 @@ function Footer({ settings }) {
                     </ul>
                 </div>
                 <div>
-                    <h4 className="mb-3 font-semibold text-white">Information</h4>
+                    <h4 className="mb-3 font-semibold text-white">{t('Information')}</h4>
                     <ul className="space-y-2 text-sm">
-                        <li><Link href="/page/about-us" className="hover:text-accent-400">About Us</Link></li>
-                        <li><Link href="/page/terms-and-conditions" className="hover:text-accent-400">Terms and Conditions</Link></li>
-                        <li><Link href="/page/privacy-policy" className="hover:text-accent-400">Privacy Policy</Link></li>
-                        <li><Link href="/page/refund-policy" className="hover:text-accent-400">Refund and Return Policy</Link></li>
-                        <li><Link href="/page/delivery-policy" className="hover:text-accent-400">Delivery Policy</Link></li>
+                        <li><Link href="/page/about-us" className="hover:text-accent-400">{t('About Us')}</Link></li>
+                        <li><Link href="/page/terms-and-conditions" className="hover:text-accent-400">{t('Terms and Conditions')}</Link></li>
+                        <li><Link href="/page/privacy-policy" className="hover:text-accent-400">{t('Privacy Policy')}</Link></li>
+                        <li><Link href="/page/refund-policy" className="hover:text-accent-400">{t('Refund and Return Policy')}</Link></li>
+                        <li><Link href="/page/delivery-policy" className="hover:text-accent-400">{t('Delivery Policy')}</Link></li>
                     </ul>
                 </div>
                 <div>
-                    <h4 className="mb-3 font-semibold text-white">Customer Service</h4>
+                    <h4 className="mb-3 font-semibold text-white">{t('Customer Service')}</h4>
                     <ul className="space-y-2 text-sm">
-                        <li><Link href="/account" className="hover:text-accent-400">My Account</Link></li>
-                        <li><Link href="/track-order" className="hover:text-accent-400">Track Order</Link></li>
-                        <li><Link href="/pc-builder" className="hover:text-accent-400">PC Builder</Link></li>
-                        <li><Link href="/brands" className="hover:text-accent-400">Brands</Link></li>
-                        <li><Link href="/contact" className="hover:text-accent-400">Contact Us</Link></li>
+                        <li><Link href="/account" className="hover:text-accent-400">{t('My Account')}</Link></li>
+                        <li><Link href="/track-order" className="hover:text-accent-400">{t('Track Order')}</Link></li>
+                        <li><Link href="/pc-builder" className="hover:text-accent-400">{t('PC Builder')}</Link></li>
+                        <li><Link href="/brands" className="hover:text-accent-400">{t('Brands')}</Link></li>
+                        <li><Link href="/contact" className="hover:text-accent-400">{t('Contact Us')}</Link></li>
                     </ul>
                 </div>
                 <div>
-                    <h4 className="mb-3 font-semibold text-white">Newsletter</h4>
-                    <p className="mb-3 text-sm">Get the latest deals and offers in your inbox.</p>
+                    <h4 className="mb-3 font-semibold text-white">{t('Newsletter')}</h4>
+                    <p className="mb-3 text-sm">{t('Get the latest deals and offers in your inbox.')}</p>
                     <form onSubmit={subscribe} className="flex gap-2">
-                        <input type="email" required value={form.data.email} onChange={(e) => form.setData('email', e.target.value)} placeholder="Your email" className="input border-0" aria-label="Email for newsletter" />
-                        <button disabled={form.processing} className="btn-accent">Join</button>
+                        <input type="email" required value={form.data.email} onChange={(e) => form.setData('email', e.target.value)} placeholder={t('Your email')} className="input border-0" aria-label={t('Email for newsletter')} />
+                        <button disabled={form.processing} className="btn-accent">{t('Join')}</button>
                     </form>
                     {form.errors.email && <p className="mt-1 text-xs text-red-400">{form.errors.email}</p>}
                     <div className="mt-4 flex gap-3 text-sm">
-                        {settings.facebook && <a href={settings.facebook} target="_blank" rel="noreferrer" className="hover:text-accent-400">Facebook</a>}
-                        {settings.youtube && <a href={settings.youtube} target="_blank" rel="noreferrer" className="hover:text-accent-400">YouTube</a>}
-                        {settings.instagram && <a href={settings.instagram} target="_blank" rel="noreferrer" className="hover:text-accent-400">Instagram</a>}
+                        {settings.facebook && <a href={settings.facebook} target="_blank" rel="noreferrer" className="hover:text-accent-400">{t('Facebook')}</a>}
+                        {settings.youtube && <a href={settings.youtube} target="_blank" rel="noreferrer" className="hover:text-accent-400">{t('YouTube')}</a>}
+                        {settings.instagram && <a href={settings.instagram} target="_blank" rel="noreferrer" className="hover:text-accent-400">{t('Instagram')}</a>}
                     </div>
                 </div>
             </div>
@@ -179,17 +191,18 @@ export default function ShopLayout({ children }) {
         <div className="flex min-h-screen flex-col">
             <header className="no-print sticky top-0 z-40 bg-brand-900 shadow">
                 <div className="container-x flex items-center gap-4 py-3">
-                    <button onClick={() => setMobileOpen(true)} className="text-white lg:hidden" aria-label="Open menu"><Icon name="menu" className="h-6 w-6" /></button>
+                    <button onClick={() => setMobileOpen(true)} className="text-white lg:hidden" aria-label={t('Open menu')}><Icon name="menu" className="h-6 w-6" /></button>
                     <Logo name={settings.site_name} />
                     <SearchBox className="hidden flex-1 md:block" />
-                    <HeaderLink href="/offers" icon="gift" title="Offers" subtitle="Latest Offers" />
-                    <HeaderLink href="/compare" icon="compare" title="Compare" subtitle="Up to 3 items" count={compareCount} />
-                    <HeaderLink href={user ? '/account' : '/login'} icon="user" title="Account" subtitle={user ? user.name.split(' ')[0] : 'Register or Login'} />
+                    <HeaderLink href="/offers" icon="gift" title={t('Offers')} subtitle={t('Latest Offers')} />
+                    <HeaderLink href="/compare" icon="compare" title={t('Compare')} subtitle={t('Up to 3 items')} count={compareCount} />
+                    <HeaderLink href={user ? '/account' : '/login'} icon="user" title={t('Account')} subtitle={user ? user.name.split(' ')[0] : t('Register or Login')} />
+                    <LanguageSwitch className="hidden text-white/80 hover:text-white lg:inline-flex" />
                     {user?.is_admin && (
-                        <Link href="/admin" className="hidden rounded-md border border-white/20 px-3 py-2 text-xs font-semibold text-white hover:border-accent-400 lg:block">Admin</Link>
+                        <Link href="/admin" className="hidden rounded-md border border-white/20 px-3 py-2 text-xs font-semibold text-white hover:border-accent-400 lg:block">{t('Admin')}</Link>
                     )}
-                    <Link href="/pc-builder" className="btn-accent hidden lg:inline-flex">PC Builder</Link>
-                    <Link href="/cart" className="relative ml-auto text-white hover:text-accent-400 lg:ml-0" aria-label="Cart">
+                    <Link href="/pc-builder" className="btn-accent hidden lg:inline-flex">{t('PC Builder')}</Link>
+                    <Link href="/cart" className="relative ml-auto text-white hover:text-accent-400 lg:ml-0" aria-label={t('Cart')}>
                         <Icon name="cart" className="h-7 w-7" />
                         <span className="absolute -right-2 -top-2 grid h-5 min-w-5 place-items-center rounded-full bg-accent-500 px-1 text-xs font-bold">{cartCount}</span>
                     </Link>

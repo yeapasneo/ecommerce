@@ -11,13 +11,20 @@
 | Item | Qty | Total |
 |:-----|:---:|------:|
 @foreach ($order->items as $item)
-| {{ $item->name }} | {{ $item->quantity }} | ৳{{ number_format($item->total) }} |
+| {{ $item->name }}{{ $item->variant_name ? ' ('.$item->variant_name.')' : '' }} | {{ $item->quantity }} | ৳{{ number_format($item->total) }} |
 @endforeach
 | Delivery | | ৳{{ number_format($order->delivery_charge) }} |
 @if ($order->discount > 0)
 | Discount | | -৳{{ number_format($order->discount) }} |
 @endif
+@if ($order->tax > 0)
+| VAT / Tax | | ৳{{ number_format($order->tax) }} |
+@endif
 | **Total** | | **৳{{ number_format($order->total) }}** |
+@if ($order->payment_status === 'partial')
+| Paid | | ৳{{ number_format($order->paid_amount) }} |
+| **Due** | | **৳{{ number_format($order->due_amount) }}** |
+@endif
 </x-mail::table>
 
 **Order #{{ $order->order_number }}** · {{ \App\Models\Order::PAYMENT_METHODS[$order->payment_method] ?? $order->payment_method }} · {{ ucfirst($order->payment_status) }}<br>

@@ -29,9 +29,13 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'auth' => [
-                'user' => $user ? $user->only('id', 'name', 'email', 'phone', 'is_admin') : null,
+                'user' => $user ? $user->only('id', 'name', 'email', 'phone', 'is_admin') + ($user->is_admin ? ['role' => $user->roleLabel(), 'permissions' => $user->permissions()] : []) : null,
             ],
             'settings' => fn () => Setting::public(),
+            'locale' => app()->getLocale(),
+            'translations' => fn () => app()->getLocale() !== 'en' && ! $request->is('admin*')
+                ? Cache::rememberForever('translations:'.app()->getLocale().':'.@filemtime(lang_path(app()->getLocale().'.json')), fn () => json_decode((string) @file_get_contents(lang_path(app()->getLocale().'.json')), true) ?: [])
+                : [],
             'seo' => fn () => $request->is('admin*') ? null : seo()->toArray(),
             'analytics' => fn () => $request->is('admin*') ? [] : analytics()->pull(),
             'menu' => fn () => $request->is('admin*') ? [] : Cache::remember('category_menu', 600, fn () => Category::menuTree()),

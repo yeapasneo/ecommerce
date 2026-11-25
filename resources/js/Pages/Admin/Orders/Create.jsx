@@ -69,12 +69,12 @@ function ProductSearch({ onPick, autoFocus }) {
                 <ul className="absolute z-30 mt-1 max-h-80 w-full overflow-y-auto rounded-xl border border-slate-200 bg-white p-1 shadow-lg" role="listbox">
                     {results.length === 0 && <li className="px-3 py-3 text-sm text-slate-500">No products match "{q}".</li>}
                     {results.map((p, i) => (
-                        <li key={p.id} role="option" aria-selected={i === active}>
+                        <li key={`${p.id}-${p.variant_id ?? ''}`} role="option" aria-selected={i === active}>
                             <button type="button" onMouseEnter={() => setActive(i)} onClick={() => pick(p)} disabled={!p.purchasable}
                                 className={`flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left ${i === active ? 'bg-primary-50' : ''} ${p.purchasable ? '' : 'cursor-not-allowed opacity-50'}`}>
                                 <span className="grid h-10 w-10 shrink-0 place-items-center rounded-md border border-slate-200 bg-white p-0.5">{p.image_url ? <img src={p.image_url} alt="" className="max-h-full max-w-full object-contain" /> : <Icon name="box" className="h-4 w-4 text-slate-300" />}</span>
                                 <span className="min-w-0 flex-1">
-                                    <span className="line-clamp-1 text-sm font-medium text-slate-900">{p.name}</span>
+                                    <span className="line-clamp-1 text-sm font-medium text-slate-900">{p.name}{p.variant_name && <span className="text-primary-700"> · {p.variant_name}</span>}</span>
                                     <span className="text-xs text-slate-500">{p.sku} · {p.stock_status === 'in_stock' ? `${p.stock} in stock` : p.stock_label}</span>
                                 </span>
                                 <span className="shrink-0 text-sm font-semibold">{money(p.price)}</span>
@@ -87,8 +87,26 @@ function ProductSearch({ onPick, autoFocus }) {
     );
 }
 
-export default function Create({ paymentMethods, deliveryMethods, sources, statuses, deliveryRates, smsReady }) {
-    const form = useForm({
+export default function Create({ order = null, paymentMethods, deliveryMethods, sources, statuses, deliveryRates, defaultVat = 0, smsReady }) {
+    const editing = !!order;
+    const form = useForm(editing ? {
+        source: order.source === 'website' ? 'other' : order.source,
+        status: order.status,
+        items: order.items,
+        user_id: order.user_id,
+        first_name: order.first_name ?? '', last_name: order.last_name ?? '', phone: order.phone ?? '', email: order.email ?? '', address: order.address ?? '', city: order.city ?? 'Dhaka',
+        notes: order.notes ?? '',
+        delivery_method: order.delivery_method,
+        delivery_charge: order.delivery_charge,
+        discount_type: 'amount',
+        discount_value: order.discount || '',
+        tax_type: 'amount',
+        tax_value: order.tax || '',
+        payment_method: order.payment_method,
+        payment_status: order.payment_status === 'refunded' ? 'paid' : order.payment_status,
+        paid_amount: order.paid_amount || '',
+        notify: false,
+    } : {
         source: 'phone',
         status: 'processing',
         items: [],
@@ -99,14 +117,17 @@ export default function Create({ paymentMethods, deliveryMethods, sources, statu
         delivery_charge: deliveryRates.inside,
         discount_type: 'amount',
         discount_value: '',
+        tax_type: 'percent',
+        tax_value: defaultVat || '',
         payment_method: 'cod',
         payment_status: 'unpaid',
+        paid_amount: '',
         notify: smsReady,
     });
     const d = form.data;
     const e = form.errors;
-    const [fullName, setFullName] = useState('');
-    const [manualDelivery, setManualDelivery] = useState(false);
+    const [fullName, setFullName] = useState(editing ? [order.first_name, order.last_name].filter(Boolean).join(' ') : '');
+    const [manualDelivery, setManualDelivery] = useState(editing);
     const [lookup, setLookup] = useState(null);
     const [adding, setAdding] = useState(false);
     const inShop = d.source === 'in_shop';
@@ -119,7 +140,11 @@ export default function Create({ paymentMethods, deliveryMethods, sources, statu
         : deliveryRates.freeOver > 0 && subtotal >= deliveryRates.freeOver ? 0
         : d.city.trim().toLowerCase() === 'dhaka' ? deliveryRates.inside : deliveryRates.outside;
     const delivery = d.delivery_method === 'store_pickup' ? 0 : Number(d.delivery_charge) || 0;
-    const total = Math.max(0, subtotal - discount + delivery);
+    const taxValue = Number(d.tax_value) || 0;
+    const tax = d.tax_type === 'percent' ? Math.round((subtotal - discount) * Math.min(taxValue, 100)) / 100 : taxValue;
+    const total = Math.max(0, Math.round((subtotal - discount + tax + delivery) * 100) / 100);
+    const paidNow = d.payment_status === 'paid' ? total : d.payment_status === 'partial' ? Math.min(Number(d.paid_amount) || 0, total) : 0;
+    const due = Math.max(0, total - paidNow);
 
     // Keep the delivery charge in step with method, city and subtotal until someone types their own.
     useEffect(() => { if (!manualDelivery) form.setData('delivery_charge', autoDelivery); }, [autoDelivery]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -135,17 +160,18 @@ export default function Create({ paymentMethods, deliveryMethods, sources, statu
     };
 
     const addProduct = (p) => {
-        const existing = d.items.findIndex((i) => i.product_id === p.id);
+        const existing = d.items.findIndex((i) => i.product_id === p.id && (i.variant_id ?? null) === (p.variant_id ?? null));
         if (existing >= 0) {
             form.setData('items', d.items.map((i, j) => (j === existing ? { ...i, quantity: i.quantity + 1 } : i)));
         } else {
-            form.setData('items', [...d.items, { product_id: p.id, quantity: 1, price: p.price, meta: p }]);
+            form.setData('items', [...d.items, { product_id: p.id, variant_id: p.variant_id ?? null, quantity: 1, price: p.price, meta: p }]);
         }
         setAdding(false);
     };
     const setItem = (idx, patch) => form.setData('items', d.items.map((i, j) => (j === idx ? { ...i, ...patch } : i)));
 
     // Look the customer up once the number is complete.
+    const firstLookup = useRef(editing);
     useEffect(() => {
         const phone = normalize(d.phone);
         if (phone.length !== 11) { setLookup(null); return; }
@@ -154,6 +180,7 @@ export default function Create({ paymentMethods, deliveryMethods, sources, statu
                 .then((r) => r.json())
                 .then((r) => {
                     setLookup(r);
+                    if (firstLookup.current) { firstLookup.current = false; return; } // editing: keep the saved details
                     if (!r.found) { form.setData('user_id', null); return; }
                     const src = r.last ?? {};
                     const name = r.user?.name ?? [src.first_name, src.last_name].filter(Boolean).join(' ');
@@ -179,8 +206,9 @@ export default function Create({ paymentMethods, deliveryMethods, sources, statu
 
     const submit = (ev) => {
         ev.preventDefault();
-        form.transform((data) => ({ ...data, items: data.items.map(({ product_id, quantity, price }) => ({ product_id, quantity, price })) }));
-        form.post('/admin/orders', { preserveScroll: true });
+        form.transform((data) => ({ ...data, items: data.items.map(({ product_id, variant_id, quantity, price }) => ({ product_id, variant_id: variant_id ?? null, quantity, price })) }));
+        if (editing) form.put(`/admin/orders/${order.id}/details`, { preserveScroll: true });
+        else form.post('/admin/orders', { preserveScroll: true });
     };
 
     const itemErrors = Object.entries(e).filter(([k]) => k.startsWith('items'));
@@ -188,12 +216,13 @@ export default function Create({ paymentMethods, deliveryMethods, sources, statu
 
     return (
         <AdminLayout
-            title="Create Order"
-            back="/admin/orders"
+            title={editing ? `Edit Order #${order.order_number}` : 'Create Order'}
+            subtitle={editing ? 'Removed items go back to stock; added items are taken from stock.' : undefined}
+            back={editing ? `/admin/orders/${order.id}` : '/admin/orders'}
             actions={
                 <>
-                    <Link href="/admin/orders" className="btn-cancel rounded-lg"><Icon name="x" className="h-4 w-4" /> Cancel</Link>
-                    <button form="order-create" disabled={form.processing || d.items.length === 0} className="btn-primary"><Icon name="check" className="h-4 w-4" /> {form.processing ? 'Creating…' : 'Create'}</button>
+                    <Link href={editing ? `/admin/orders/${order.id}` : '/admin/orders'} className="btn-cancel rounded-lg"><Icon name="x" className="h-4 w-4" /> Cancel</Link>
+                    <button form="order-create" disabled={form.processing || d.items.length === 0} className="btn-primary"><Icon name="check" className="h-4 w-4" /> {form.processing ? 'Saving…' : editing ? 'Save changes' : 'Create'}</button>
                 </>
             }
         >
@@ -215,12 +244,13 @@ export default function Create({ paymentMethods, deliveryMethods, sources, statu
                                                     const m = i.meta ?? {};
                                                     const over = m.stock_status === 'in_stock' && i.quantity > m.stock;
                                                     return (
-                                                        <tr key={i.product_id}>
+                                                        <tr key={`${i.product_id}-${i.variant_id ?? ''}`}>
                                                             <td className="pl-0">
                                                                 <div className="flex items-center gap-3">
                                                                     <span className="grid h-11 w-11 shrink-0 place-items-center rounded-lg border border-slate-200 bg-white p-0.5">{m.image_url ? <img src={m.image_url} alt="" className="max-h-full max-w-full object-contain" /> : <Icon name="box" className="h-4 w-4 text-slate-300" />}</span>
                                                                     <div className="min-w-0">
                                                                         <p className="line-clamp-1 font-medium text-slate-900">{m.name}</p>
+                                                                        {m.variant_name && <p className="text-xs font-medium text-primary-700">{m.variant_name}</p>}
                                                                         <p className={`text-xs ${over ? 'text-red-600' : 'text-slate-500'}`}>{m.sku} · {m.stock_status === 'in_stock' ? `${m.stock} in stock` : m.stock_label}</p>
                                                                     </div>
                                                                 </div>
@@ -268,6 +298,25 @@ export default function Create({ paymentMethods, deliveryMethods, sources, statu
                                     </div>
                                 </div>
                             </SubCard>
+                            <SubCard title="VAT / Tax" icon="receipt" tone="primary">
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="label text-xs" htmlFor="tax-pct">Percentage</label>
+                                        <div className="relative">
+                                            <input id="tax-pct" className="input pr-7" type="number" min="0" max="100" step="0.5"
+                                                value={d.tax_type === 'percent' ? d.tax_value : (subtotal - discount > 0 && tax ? +((tax / (subtotal - discount)) * 100).toFixed(1) : '')}
+                                                onChange={(ev) => form.setData((c) => ({ ...c, tax_type: 'percent', tax_value: ev.target.value }))} />
+                                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-slate-400">%</span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="label text-xs" htmlFor="tax-amt">Amount</label>
+                                        <input id="tax-amt" className="input" type="number" min="0" step="1"
+                                            value={d.tax_type === 'amount' ? d.tax_value : (tax || '')}
+                                            onChange={(ev) => form.setData((c) => ({ ...c, tax_type: 'amount', tax_value: ev.target.value }))} />
+                                    </div>
+                                </div>
+                            </SubCard>
                             <SubCard title="Delivery" icon="truck" tone="blue">
                                 <div className="grid grid-cols-2 gap-3">
                                     <div>
@@ -285,21 +334,29 @@ export default function Create({ paymentMethods, deliveryMethods, sources, statu
                                 {manualDelivery && <button type="button" onClick={() => { setManualDelivery(false); form.setData('delivery_charge', autoDelivery); }} className="mt-2 text-xs font-medium text-primary-700 hover:underline">Use standard charge ({money(autoDelivery)})</button>}
                             </SubCard>
                             <SubCard title="Payment" icon="card" tone="green">
-                                <Segmented label="Payment status" value={d.payment_status} onChange={(v) => form.setData('payment_status', v)} options={[['paid', 'Fully Paid', 'check'], ['unpaid', 'Unpaid']]} />
+                                <Segmented label="Payment status" value={d.payment_status} onChange={(v) => form.setData('payment_status', v)} options={[['paid', 'Fully Paid', 'check'], ['partial', 'Partial', 'refresh'], ['unpaid', 'Unpaid']]} />
+                                {d.payment_status === 'partial' && (
+                                    <div className="mt-3">
+                                        <label className="label text-xs" htmlFor="paid-amt">Paid amount (৳)</label>
+                                        <input id="paid-amt" className="input" type="number" min="0" step="1" value={d.paid_amount} onChange={(ev) => form.setData('paid_amount', ev.target.value)} />
+                                        {e.paid_amount && <p className="mt-1 text-xs text-red-600">{e.paid_amount}</p>}
+                                    </div>
+                                )}
                                 <label className="label mt-3 text-xs" htmlFor="pay-method">Method</label>
                                 <select id="pay-method" className="input" value={d.payment_method} onChange={(ev) => form.setData('payment_method', ev.target.value)}>
                                     {Object.entries(paymentMethods).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                                 </select>
                             </SubCard>
-                            <SubCard title="Note" icon="chat">
-                                <textarea className="input" rows={3} value={d.notes} onChange={(ev) => form.setData('notes', ev.target.value)} placeholder="Gift wrap, call before delivery…" aria-label="Order note" />
-                            </SubCard>
                         </div>
+                        <label className="label mt-4" htmlFor="order-note">Note</label>
+                        <textarea id="order-note" className="input" rows={2} value={d.notes} onChange={(ev) => form.setData('notes', ev.target.value)} placeholder="Gift wrap, call before delivery…" />
                         <div className="mt-6 flex flex-wrap items-end justify-between gap-4 border-t border-slate-200 pt-6">
                             <dl className="grid grid-cols-[auto_auto] gap-x-8 gap-y-1 text-sm text-slate-600">
                                 <dt>Sub-total</dt><dd className="text-right">{money(subtotal)}</dd>
                                 <dt>Delivery</dt><dd className="text-right">{money(delivery)}</dd>
                                 {discount > 0 && <><dt>Discount</dt><dd className="text-right text-green-700">-{money(discount)}</dd></>}
+                                {tax > 0 && <><dt>VAT / Tax</dt><dd className="text-right">{money(tax)}</dd></>}
+                                {d.payment_status === 'partial' && <><dt>Paid</dt><dd className="text-right">{money(paidNow)}</dd><dt className="font-semibold text-slate-900">Due</dt><dd className="text-right font-semibold text-red-600">{money(due)}</dd></>}
                             </dl>
                             <div className="rounded-xl border-2 border-primary-200 bg-primary-50/60 px-6 py-3 text-center">
                                 <p className="text-sm font-medium text-primary-700">Grand Total</p>

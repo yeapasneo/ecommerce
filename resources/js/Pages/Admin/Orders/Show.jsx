@@ -38,8 +38,8 @@ function ContactRow({ icon, children }) {
     );
 }
 
-export default function Show({ order, statuses, paymentStatuses, paymentMethods, deliveryMethods, couriers = {}, courierDefaults = {}, validity = null, notificationLog = [] }) {
-    const form = useForm({ status: order.status, payment_status: order.payment_status, comment: '' });
+export default function Show({ order, statuses, paymentStatuses, paymentMethods, deliveryMethods, couriers = {}, courierDefaults = {}, validity = null, notificationLog = [], editable = false }) {
+    const form = useForm({ status: order.status, payment_status: order.payment_status, paid_amount: order.paid_amount || '', comment: '' });
     const save = (e) => {
         e.preventDefault();
         form.put(`/admin/orders/${order.id}`, { preserveScroll: true, onSuccess: () => form.setData('comment', '') });
@@ -55,6 +55,7 @@ export default function Show({ order, statuses, paymentStatuses, paymentMethods,
                 <>
                     <span className={`${soft} px-3 py-1 text-sm ${statusColor(order.status)}`}>{titleCase(order.status)}</span>
                     <a href={`/admin/orders/${order.id}/invoice`} target="_blank" rel="noreferrer" className="btn-outline"><Icon name="print" className="h-4 w-4" /> Invoice</a>
+                    {editable && <Link href={`/admin/orders/${order.id}/edit`} className="btn-outline"><Icon name="edit" className="h-4 w-4" /> Edit order</Link>}
                     <button form="order-form" disabled={form.processing || !form.isDirty} className="btn-primary"><Icon name="check" className="h-4 w-4" /> {form.processing ? 'Saving…' : 'Save changes'}</button>
                 </>
             }
@@ -75,7 +76,7 @@ export default function Show({ order, statuses, paymentStatuses, paymentMethods,
                                                     </div>
                                                     <div className="min-w-0">
                                                         <div className="flex items-center gap-1.5">
-                                                            <span className="line-clamp-1 font-medium text-slate-900">{i.name}</span>
+                                                            <span className="line-clamp-1 font-medium text-slate-900">{i.name}{i.variant_name && <span className="font-normal text-primary-700"> · {i.variant_name}</span>}</span>
                                                             {i.product && <a href={`/product/${i.product.slug}`} target="_blank" rel="noreferrer" className="shrink-0 text-slate-500 hover:text-primary-700" aria-label="Open in store"><Icon name="external" className="h-3.5 w-3.5" /></a>}
                                                         </div>
                                                         <p className="font-mono text-xs text-slate-500">{i.sku}</p>
@@ -129,6 +130,9 @@ export default function Show({ order, statuses, paymentStatuses, paymentMethods,
                                 <dt>Sub-total</dt><dd className="text-right">{money(order.subtotal)}</dd>
                                 <dt>Delivery</dt><dd className="text-right">{money(order.delivery_charge)}</dd>
                                 {order.discount > 0 && <><dt>Discount</dt><dd className="text-right text-green-700">-{money(order.discount)}</dd></>}
+                                {order.tax > 0 && <><dt>VAT / Tax</dt><dd className="text-right">{money(order.tax)}</dd></>}
+                                {order.paid_amount > 0 && order.payment_status !== 'paid' && <><dt>Paid</dt><dd className="text-right">{money(order.paid_amount)}</dd></>}
+                                {order.due_amount > 0 && order.payment_status !== 'unpaid' && <><dt className="font-semibold text-slate-900">Due</dt><dd className="text-right font-semibold text-red-600">{money(order.due_amount)}</dd></>}
                             </dl>
                             <div className="rounded-xl border-2 border-primary-200 bg-primary-50/60 px-6 py-3 text-center">
                                 <p className="text-sm font-medium text-primary-700">Grand Total</p>
@@ -151,6 +155,14 @@ export default function Show({ order, statuses, paymentStatuses, paymentMethods,
                             <div>
                                 <span className="label">Payment Status</span>
                                 <Segmented label="Payment status" value={form.data.payment_status} onChange={(v) => form.setData('payment_status', v)} options={paymentStatuses.map((s) => ({ value: s, label: titleCase(s), icon: s === 'paid' ? 'check' : undefined }))} />
+                                {form.data.payment_status === 'partial' && (
+                                    <div className="mt-3">
+                                        <label className="label" htmlFor="paid-amount">Paid so far (৳)</label>
+                                        <input id="paid-amount" className="input" type="number" min="0" step="1" value={form.data.paid_amount} onChange={(e) => form.setData('paid_amount', e.target.value)} />
+                                        {form.errors.paid_amount && <p className="mt-1 text-xs text-red-600">{form.errors.paid_amount}</p>}
+                                        <p className="mt-1 text-xs text-slate-500">Due: {money(Math.max(0, order.total - (Number(form.data.paid_amount) || 0)))}</p>
+                                    </div>
+                                )}
                             </div>
                             <TextArea label="Comment (optional)" rows={2} value={form.data.comment} onChange={(e) => form.setData('comment', e.target.value)} hint="Shown to the customer in order tracking" />
                             {form.data.status === 'cancelled' && order.status !== 'cancelled' && <p className="rounded-lg bg-red-50 p-3 text-xs text-red-700">Cancelling returns the items to stock.</p>}

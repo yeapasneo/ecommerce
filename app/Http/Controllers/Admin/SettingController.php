@@ -13,6 +13,7 @@ use App\Models\NewsletterSubscriber;
 use App\Models\Order;
 use App\Models\Setting;
 use App\Payments\PaymentManager;
+use App\Support\Activity;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -63,7 +64,7 @@ class SettingController extends Controller
     public function update(Request $request, PaymentManager $payments, CourierManager $couriers)
     {
         $flags = ['seo_noindex', 'cod_enabled', 'bkash_enabled', 'bkash_sandbox', 'nagad_enabled', 'nagad_sandbox', 'sslcommerz_enabled', 'sslcommerz_sandbox', 'eps_enabled', 'eps_sandbox',
-            'courier_sync_status', 'steadfast_enabled', 'pathao_enabled', 'pathao_sandbox', 'checkout_otp',
+            'courier_sync_status', 'steadfast_enabled', 'pathao_enabled', 'pathao_sandbox', 'checkout_otp', 'emi_enabled', 'abandoned_cart_enabled',
             ...collect(OrderNotifier::EVENTS)->keys()->flatMap(fn ($e) => ["notify_sms_{$e}", "notify_email_{$e}"])->all()];
         $rules = collect(Setting::DEFAULTS)->map(fn () => ['nullable', 'string', 'max:1000'])->all();
         foreach (['delivery_charge_inside', 'delivery_charge_outside', 'express_delivery_charge', 'free_delivery_over'] as $k) {
@@ -83,6 +84,11 @@ class SettingController extends Controller
         $rules['nagad_private_key'] = ['nullable', 'string', 'max:5000'];
         $rules['seo_og_image'] = ['nullable', 'image', 'max:2048'];
         $rules['pathao_delivery_type'] = ['nullable', 'in:48,12'];
+        $rules['emi_min_amount'] = ['nullable', 'numeric', 'min:0'];
+        $rules['emi_plans'] = ['nullable', 'string', 'max:200', 'regex:/^\s*\d+\s*:\s*\d+(\.\d+)?\s*(,\s*\d+\s*:\s*\d+(\.\d+)?\s*)*$/'];
+        $rules['default_locale'] = ['nullable', 'in:en,bn'];
+        $rules['abandoned_cart_delay_hours'] = ['nullable', 'integer', 'between:1,72'];
+        $rules['vat_percent'] = ['nullable', 'numeric', 'min:0', 'max:100'];
         $rules['sms_provider'] = ['nullable', Rule::in(array_keys(SmsManager::PROVIDERS))];
         $rules['notify_admin_email'] = ['nullable', 'email', 'max:255'];
         $rules['mail_port'] = ['nullable', 'integer', 'between:1,65535'];
@@ -105,6 +111,7 @@ class SettingController extends Controller
             'ga_measurement_id.regex' => 'Use the GA4 measurement ID, e.g. G-ABC123XYZ.',
             'facebook_pixel_id.regex' => 'The Pixel ID is a number, e.g. 123456789012345.',
             'sms_template_otp.regex' => 'The code message must include {code}.',
+            'emi_plans.regex' => 'Use months:interest pairs separated by commas, e.g. 3:0, 6:0, 12:7.',
         ]);
 
         foreach ($flags as $k) {
@@ -126,7 +133,13 @@ class SettingController extends Controller
             $data[$k] = trim((string) ($data[$k] ?? ''));
         }
 
+        $before = Setting::all_settings();
         Setting::put($data);
+        $changed = collect($data)->filter(fn ($v, $k) => (string) ($before[$k] ?? '') !== (string) $v);
+        if ($changed->isNotEmpty()) {
+            Activity::log('updated', null, 'Changed settings: '.$changed->keys()->map(fn ($k) => str_replace('_', ' ', $k))->implode(', '),
+                $changed->mapWithKeys(fn ($v, $k) => [$k => in_array($k, Setting::SECRETS, true) ? ['•••', '••• (changed)'] : [$before[$k] ?? null, $v]])->all());
+        }
 
         // A gateway or courier can only be switched on once all of its credentials are saved.
         $incomplete = collect(PaymentManager::GATEWAYS)->keys()

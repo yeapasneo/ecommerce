@@ -182,7 +182,7 @@ def image_url(product, listing):
     return re.sub(r'-\d+x\d+(\.\w+)$', r'-500x500\1', src)
 
 
-def save_image(data, path):
+def save_image(data, path, quality=80):
     im = Image.open(io.BytesIO(data))
     im.load()
     if im.mode in ('RGBA', 'LA', 'P'):
@@ -195,7 +195,7 @@ def save_image(data, path):
     if max(im.size) > 500:
         im.thumbnail((500, 500))
     tmp = path.with_suffix('.tmp')
-    im.save(tmp, 'WEBP', quality=80, method=4)
+    im.save(tmp, 'WEBP', quality=quality, method=4)
     tmp.replace(path)
 
 
@@ -297,8 +297,18 @@ def main():
                     print(f'  images {i}/{len(todo)} ({ok} saved)', flush=True)
         print(f'images done: {ok}/{len(todo)} saved', flush=True)
 
+    gallery = {}
+    if (WORK / 'gallery.jsonl').exists():  # written by gallery.py
+        for line in (WORK / 'gallery.jsonl').read_text().splitlines():
+            try:
+                rec = json.loads(line)
+                gallery[rec['url']] = rec['files']
+            except (json.JSONDecodeError, KeyError):
+                pass
     for p in products:
         p.pop('image', None)
+        if gallery.get(p['url']):
+            p['gallery_files'] = [f'gallery/{f}' for f in gallery[p['url']]]
         if args.images and (Path(args.images) / f"{p['slug']}.webp").exists():
             p['image_file'] = f"{Path(args.images).name}/{p['slug']}.webp"
     out = Path(args.out)

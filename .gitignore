@@ -28,3 +28,4 @@ Thumbs.db
 /scripts/crawler/.cache
 __pycache__/
 /public/images/products/*.tmp
+/public/images/products/gallery/*.tmp

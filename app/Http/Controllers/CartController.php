@@ -24,13 +24,24 @@ class CartController extends Controller
             'product_id' => ['required', 'integer', 'exists:products,id'],
             'quantity' => ['nullable', 'integer', 'min:1', 'max:99'],
             'buy_now' => ['nullable', 'boolean'],
+            'variant_id' => ['nullable', 'integer'],
         ]);
         $product = Product::findOrFail($data['product_id']);
-        if (! $product->isPurchasable()) {
+        $variant = null;
+        if ($product->has_variants) {
+            $variant = $product->variants()->where('is_active', true)->find($request->integer('variant_id'));
+            if (! $variant) {
+                return redirect()->route('product.show', $product->slug)->with('error', "Choose an option for {$product->name} first.");
+            }
+            $variant->setRelation('product', $product);
+            if (! $variant->isPurchasable()) {
+                return back()->with('error', "{$product->name} ({$variant->name}) is out of stock.");
+            }
+        } elseif (! $product->isPurchasable()) {
             return back()->with('error', "{$product->name} is currently not available.");
         }
 
-        $this->cart->add($product->id, $data['quantity'] ?? 1);
+        $this->cart->add($product->id, $data['quantity'] ?? 1, $variant?->id);
         $product->loadMissing('brand:id,name', 'category:id,name');
         $item = Analytics::item($product, $data['quantity'] ?? 1);
         session()->flash('analytics_skip_view', $product->id); // the redirect back isn't a new product view

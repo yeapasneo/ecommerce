@@ -2,6 +2,7 @@ import '../css/app.css';
 import { createInertiaApp, router } from '@inertiajs/react';
 import { createRoot } from 'react-dom/client';
 import { handlePage } from './lib/analytics';
+import { setLocale } from './lib/i18n';
 
 createInertiaApp({
     title: (title) => title,
@@ -10,6 +11,7 @@ createInertiaApp({
         return pages[`./Pages/${name}.jsx`]();
     },
     setup({ el, App, props }) {
+        setLocale(props.initialPage.props.locale, props.initialPage.props.translations);
         createRoot(el).render(<App {...props} />);
         handlePage(props.initialPage);
         router.on('navigate', (event) => handlePage(event.detail.page));

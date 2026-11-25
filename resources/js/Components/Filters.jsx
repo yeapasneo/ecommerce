@@ -1,6 +1,7 @@
 import { router } from '@inertiajs/react';
 import { useState } from 'react';
 import { cleanParams } from '../lib/format';
+import { t } from '../lib/i18n';
 
 function Panel({ title, children }) {
     const [open, setOpen] = useState(true);
@@ -47,17 +48,17 @@ export default function Filters({ filters, query, onDone }) {
 
     return (
         <div>
-            <Panel title="Price Range">
+            <Panel title={t('Price Range')}>
                 <p className="mb-3 text-xs text-slate-500">৳{filters.priceRange.min.toLocaleString()} – ৳{filters.priceRange.max.toLocaleString()}</p>
                 <div className="flex items-center gap-2">
-                    <input type="number" className="input" placeholder="Min" value={min} onChange={(e) => setMin(e.target.value)} aria-label="Minimum price" />
+                    <input type="number" className="input" placeholder={t('Min')} value={min} onChange={(e) => setMin(e.target.value)} aria-label={t('Minimum price')} />
                     <span>-</span>
-                    <input type="number" className="input" placeholder="Max" value={max} onChange={(e) => setMax(e.target.value)} aria-label="Maximum price" />
+                    <input type="number" className="input" placeholder={t('Max')} value={max} onChange={(e) => setMax(e.target.value)} aria-label={t('Maximum price')} />
                 </div>
-                <button onClick={() => apply({ min_price: min, max_price: max })} className="btn-primary btn-sm mt-3 w-full">Apply</button>
+                <button onClick={() => apply({ min_price: min, max_price: max })} className="btn-primary btn-sm mt-3 w-full">{t('Apply')}</button>
             </Panel>
 
-            <Panel title="Availability">
+            <Panel title={t('Availability')}>
                 {Object.entries(filters.statuses).map(([value, label]) => (
                     <label key={value} className="mb-2 flex cursor-pointer items-center gap-2 text-sm">
                         <input type="checkbox" className="accent-brand-700" checked={query.status.includes(value)} onChange={() => apply({ status: toggleIn(query.status, value) })} />
@@ -67,7 +68,7 @@ export default function Filters({ filters, query, onDone }) {
             </Panel>
 
             {filters.brands.length > 0 && (
-                <Panel title="Brand">
+                <Panel title={t('Brand')}>
                     <div className="max-h-56 overflow-y-auto">
                         {filters.brands.map((b) => (
                             <label key={b.id} className="mb-2 flex cursor-pointer items-center gap-2 text-sm">

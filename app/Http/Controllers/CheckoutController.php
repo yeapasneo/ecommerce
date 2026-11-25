@@ -9,6 +9,7 @@ use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\Setting;
 use App\Payments\PaymentManager;
+use App\Services\AbandonedCarts;
 use App\Services\CartService;
 use App\Services\OrderService;
 use App\Support\Analytics;
@@ -37,6 +38,9 @@ class CheckoutController extends Controller
         }
         $user = auth()->user();
         seo()->title('Checkout');
+        if ($user && Setting::enabled('abandoned_cart_enabled')) {
+            app(AbandonedCarts::class)->track([]);
+        }
         analytics()->push('begin_checkout', [
             'currency' => 'BDT',
             'value' => (float) ($summary['subtotal'] - $summary['discount']),
@@ -101,7 +105,7 @@ class CheckoutController extends Controller
 
         $coupon = null;
         $order = app(OrderService::class)->place(
-            $items->map(fn ($i) => ['product_id' => $i->product_id, 'quantity' => $i->quantity])->all(),
+            $items->map(fn ($i) => ['product_id' => $i->product_id, 'variant_id' => $i->variant_id, 'quantity' => $i->quantity])->all(),
             function (float $subtotal) use ($data, &$coupon) {
                 $coupon = $this->cart->appliedCoupon($subtotal);
                 $discount = $coupon ? $coupon->discountFor($subtotal) : 0;
@@ -126,6 +130,7 @@ class CheckoutController extends Controller
             }],
         );
 
+        app(AbandonedCarts::class)->markRecovered($order);
         $this->cart->clear();
         session()->forget('coupon');
         session()->push('placed_orders', $order->order_number);
@@ -152,6 +157,21 @@ class CheckoutController extends Controller
                 throw ValidationException::withMessages(['payment_method' => 'Cash on delivery is not available for this number. Please pay online.']);
             }
         }
+    }
+
+    /** Remember who is checking out, so an abandoned cart can be followed up. */
+    public function contact(Request $request, AbandonedCarts $carts)
+    {
+        if (! Setting::enabled('abandoned_cart_enabled')) {
+            return response()->noContent();
+        }
+        $data = $request->validate(['name' => ['nullable', 'string', 'max:100'], 'phone' => ['nullable', 'string', 'max:30'], 'email' => ['nullable', 'email', 'max:255']]);
+        if (! empty($data['phone']) && ! Phone::isValid($data['phone'])) {
+            unset($data['phone']);
+        }
+        $carts->track($data);
+
+        return response()->noContent();
     }
 
     public function sendOtp(Request $request, PhoneVerification $otp)
@@ -197,7 +217,7 @@ class CheckoutController extends Controller
         $awaitingPayment = $this->payments->isGateway($order->payment_method) && ! $order->isPaid() && $order->status !== 'cancelled';
 
         return Inertia::render('OrderSuccess', [
-            'order' => $order->only('id', 'order_number', 'first_name', 'last_name', 'phone', 'email', 'address', 'city', 'subtotal', 'delivery_charge', 'discount', 'total', 'coupon_code', 'payment_method', 'payment_status', 'delivery_method', 'status', 'transaction_id', 'paid_at', 'created_at', 'items'),
+            'order' => $order->only('id', 'order_number', 'first_name', 'last_name', 'phone', 'email', 'address', 'city', 'subtotal', 'delivery_charge', 'discount', 'tax', 'total', 'paid_amount', 'due_amount', 'coupon_code', 'payment_method', 'payment_status', 'delivery_method', 'status', 'transaction_id', 'paid_at', 'created_at', 'items'),
             'paymentMethods' => Order::PAYMENT_METHODS,
             'deliveryMethods' => Order::DELIVERY_METHODS,
             'paymentResult' => $request->hasValidSignature() ? $request->query('payment') : null,

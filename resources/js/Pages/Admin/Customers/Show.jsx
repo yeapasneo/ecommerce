@@ -76,7 +76,9 @@ export default function Show({ customer, orders }) {
                         ) : (
                             <div className="space-y-5">
                                 <Toggle label="Block account" description="Blocked users are logged out and can't sign in or place orders." checked={!customer.is_active} onChange={(v) => update({ is_active: !v })} />
-                                <Toggle label="Admin access" description="Admins can manage the whole store from this panel." checked={customer.is_admin} onChange={(v) => confirm(v ? 'Give this user full admin access?' : 'Remove admin access?') && update({ is_admin: v })} />
+                                {auth.user.permissions?.includes('staff') && (
+                                    <Toggle label="Admin access" description="Gives Manager access to this panel. Change roles on the Staff page." checked={customer.is_admin} onChange={(v) => confirm(v ? 'Give this user Manager access to the admin panel?' : 'Remove admin access?') && update({ is_admin: v })} />
+                                )}
                             </div>
                         )}
                     </Panel>

@@ -85,6 +85,16 @@ class Setting extends Model
         'pathao_item_weight' => '0.5',
         'pathao_webhook_secret' => '',
 
+        'vat_percent' => '0',            // default VAT on staff orders
+        'emi_enabled' => '0',
+        'emi_min_amount' => '5000',
+        'emi_plans' => '3:0, 6:0, 9:5, 12:7',
+        'emi_note' => '0% EMI on selected bank credit cards. Pay by card at checkout and ask your bank to convert it to EMI.',
+        'default_locale' => 'en',        // en | bn
+        'abandoned_cart_enabled' => '0',
+        'abandoned_cart_delay_hours' => '2',
+        'sms_template_abandoned_cart' => 'Hi {name}, you left items worth Tk {total} in your cart at {site}. Complete your order: {link}',
+
         // Notifications
         'sms_provider' => '',            // bulksmsbd | alphasms | sslwireless
         'sms_api_key' => '',

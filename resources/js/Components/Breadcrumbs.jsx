@@ -1,10 +1,11 @@
 import { Link } from '@inertiajs/react';
 import Icon from './Icon';
+import { t } from '../lib/i18n';
 
 export default function Breadcrumbs({ items = [] }) {
     return (
         <nav className="mb-4 flex flex-wrap items-center gap-1 text-sm text-slate-500">
-            <Link href="/" className="hover:text-accent-600">Home</Link>
+            <Link href="/" className="hover:text-accent-600">{t('Home')}</Link>
             {items.map((b, i) => (
                 <span key={i} className="flex items-center gap-1">
                     <Icon name="chevronRight" className="h-3.5 w-3.5" />

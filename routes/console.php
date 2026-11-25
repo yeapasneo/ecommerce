@@ -15,6 +15,9 @@ Schedule::call(fn () => Cache::forever('scheduler:last_run', now()->toIso8601Str
 // Catch courier updates whose webhook never arrived.
 Schedule::command('couriers:sync')->everyThirtyMinutes()->withoutOverlapping()->runInBackground();
 
+// One reminder for checkouts left unfinished (Settings → Notifications).
+Schedule::command('carts:remind')->hourly()->withoutOverlapping();
+
 // Nightly database backup (keeps 14).
 Schedule::command('app:backup')->dailyAt('02:30')->withoutOverlapping();
 

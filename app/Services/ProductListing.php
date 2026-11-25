@@ -24,7 +24,7 @@ class ProductListing
     public function build(Builder $base, array $filterAttributes = [], bool $withBrandFilter = true): array
     {
         $r = $this->request;
-        $baseForFacets = clone $base;
+        $baseForFacets = (clone $base)->reorder(); // ranking order breaks the aggregate queries below
         $query = clone $base;
 
         $priceBounds = (clone $baseForFacets)->selectRaw('MIN(price) as min, MAX(price) as max')->first();
@@ -62,6 +62,7 @@ class ProductListing
             'price_desc' => $query->orderByDesc('price'),
             'newest' => $query->latest('id'),
             'popular' => $query->orderByDesc('views'),
+            'relevance' => $query, // search results are already ranked by relevance
             default => $query->orderByDesc('is_featured')->orderBy('id'),
         };
 

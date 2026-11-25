@@ -15,6 +15,7 @@ export const statusColor = (s) =>
         cancelled: 'bg-red-100 text-red-800',
         paid: 'bg-green-100 text-green-800',
         unpaid: 'bg-slate-200 text-slate-700',
+        partial: 'bg-amber-100 text-amber-800',
         refunded: 'bg-purple-100 text-purple-800',
         in_stock: 'bg-green-100 text-green-800',
         out_of_stock: 'bg-red-100 text-red-800',

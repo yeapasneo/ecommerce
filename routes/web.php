@@ -13,6 +13,9 @@ use App\Http\Controllers\PcBuilderController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\SeoController;
 use App\Http\Controllers\SiteController;
+use App\Http\Middleware\SetLocale;
+use App\Models\AbandonedCheckout;
+use App\Services\AbandonedCarts;
 use Illuminate\Support\Facades\Route;
 
 // Storefront
@@ -37,12 +40,29 @@ Route::delete('/cart/coupon/remove', [CartController::class, 'removeCoupon'])->n
 
 Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
 Route::post('/checkout/quote', [CheckoutController::class, 'quote'])->name('checkout.quote');
+Route::post('/checkout/contact', [CheckoutController::class, 'contact'])->name('checkout.contact')->middleware('throttle:30,1');
+Route::get('/cart/recover/{token}', function (string $token, AbandonedCarts $carts) {
+    $record = AbandonedCheckout::where('token', $token)->whereNull('recovered_at')->first();
+    if (! $record) {
+        return redirect()->route('cart.index')->with('error', 'This cart link has expired.');
+    }
+    $carts->restore($record);
+
+    return redirect()->route('checkout.index')->with('success', 'Your cart is ready. Complete your order below.');
+})->name('cart.recover');
 Route::post('/checkout/otp/send', [CheckoutController::class, 'sendOtp'])->name('checkout.otp.send')->middleware('throttle:3,10');
 Route::post('/checkout/otp/verify', [CheckoutController::class, 'verifyOtp'])->name('checkout.otp.verify')->middleware('throttle:10,10');
 Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store')->middleware('throttle:10,1');
 Route::get('/checkout/success/{number}', [CheckoutController::class, 'success'])->name('checkout.success');
 Route::post('/payment/{number}/pay', [PaymentController::class, 'pay'])->name('payment.pay')->middleware('throttle:10,1');
 Route::get('/payment/{number}/pay', [PaymentController::class, 'pay'])->name('payment.start');
+
+Route::get('/locale/{locale}', function (string $locale) {
+    abort_unless(isset(SetLocale::LOCALES[$locale]), 404);
+    session(['locale' => $locale]);
+
+    return redirect()->back(fallback: '/')->withCookie(cookie()->forever('locale', $locale));
+})->name('locale');
 
 // SEO
 Route::get('/robots.txt', [SeoController::class, 'robots'])->name('robots');
@@ -104,42 +124,74 @@ Route::middleware('auth')->group(function () {
 // Admin panel
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', Admin\DashboardController::class)->name('dashboard');
+    // Product picker for staff orders and flash sales (checked in the controller).
     Route::get('products/search', [Admin\ProductController::class, 'search'])->name('products.search');
-    Route::resource('products', Admin\ProductController::class)->except('show');
-    Route::delete('products/{product}/images/{image}', [Admin\ProductController::class, 'destroyImage'])->name('products.images.destroy');
-    Route::resource('categories', Admin\CategoryController::class)->only('index', 'store', 'update', 'destroy');
-    Route::resource('brands', Admin\BrandController::class)->only('index', 'store', 'update', 'destroy');
-    Route::resource('orders', Admin\OrderController::class)->only('index', 'create', 'store', 'show', 'update');
-    Route::get('orders/{order}/invoice', [Admin\OrderController::class, 'invoice'])->name('orders.invoice');
-    Route::get('customers/lookup', [Admin\CustomerController::class, 'lookup'])->name('customers.lookup');
-    Route::resource('customers', Admin\CustomerController::class)->only('index', 'show', 'update')->parameters(['customers' => 'user']);
-    Route::resource('coupons', Admin\CouponController::class)->only('index', 'store', 'update', 'destroy');
-    Route::resource('banners', Admin\BannerController::class)->only('index', 'store', 'update', 'destroy');
-    Route::resource('offers', Admin\OfferController::class)->only('index', 'store', 'update', 'destroy');
-    Route::resource('pages', Admin\PageController::class)->only('index', 'store', 'update', 'destroy');
-    Route::resource('pc-components', Admin\PcComponentController::class)->only('index', 'store', 'update', 'destroy');
-    Route::get('reviews', [Admin\ReviewController::class, 'index'])->name('reviews.index');
-    Route::patch('reviews/{review}', [Admin\ReviewController::class, 'update'])->name('reviews.update');
-    Route::delete('reviews/{review}', [Admin\ReviewController::class, 'destroy'])->name('reviews.destroy');
-    Route::get('questions', [Admin\ReviewController::class, 'questions'])->name('questions.index');
-    Route::patch('questions/{question}', [Admin\ReviewController::class, 'answer'])->name('questions.answer');
-    Route::delete('questions/{question}', [Admin\ReviewController::class, 'destroyQuestion'])->name('questions.destroy');
-    Route::get('fraud-check', [Admin\BlockedPhoneController::class, 'check'])->name('fraud.check');
-    Route::post('blocked-phones/unblock', [Admin\BlockedPhoneController::class, 'unblock'])->name('blocked-phones.unblock');
-    Route::resource('blocked-phones', Admin\BlockedPhoneController::class)->only('index', 'store', 'update', 'destroy');
-    Route::post('orders/{order}/courier', [Admin\CourierController::class, 'send'])->name('orders.courier');
-    Route::post('orders/{order}/courier/refresh', [Admin\CourierController::class, 'refresh'])->name('orders.courier.refresh');
-    Route::post('couriers/{courier}/test', [Admin\CourierController::class, 'test'])->name('couriers.test');
-    Route::get('couriers/pathao/locations', [Admin\CourierController::class, 'pathaoLocations'])->name('couriers.pathao.locations');
-    Route::get('system', [Admin\SystemController::class, 'index'])->name('system');
-    Route::post('system/backup', [Admin\SystemController::class, 'backup'])->name('system.backup')->middleware('throttle:3,10');
-    Route::get('system/backups/{name}', [Admin\SystemController::class, 'download'])->name('system.backups.download');
-    Route::post('system/retry-failed', [Admin\SystemController::class, 'retryFailed'])->name('system.retry-failed');
-    Route::post('settings/test-sms', [Admin\SettingController::class, 'testSms'])->name('settings.test-sms')->middleware('throttle:5,1');
-    Route::post('settings/test-email', [Admin\SettingController::class, 'testEmail'])->name('settings.test-email')->middleware('throttle:5,1');
-    Route::get('settings', [Admin\SettingController::class, 'edit'])->name('settings');
-    Route::put('settings', [Admin\SettingController::class, 'update'])->name('settings.update');
-    Route::get('messages', [Admin\SettingController::class, 'messages'])->name('messages');
-    Route::patch('messages/{message}', [Admin\SettingController::class, 'readMessage'])->name('messages.read');
-    Route::delete('messages/{message}', [Admin\SettingController::class, 'destroyMessage'])->name('messages.destroy');
+
+    Route::middleware('can:admin.orders')->group(function () {
+        Route::resource('orders', Admin\OrderController::class)->only('index', 'create', 'store', 'show', 'update');
+        Route::get('orders/{order}/edit', [Admin\OrderController::class, 'edit'])->name('orders.edit');
+        Route::put('orders/{order}/details', [Admin\OrderController::class, 'saveDetails'])->name('orders.details');
+        Route::get('orders/{order}/invoice', [Admin\OrderController::class, 'invoice'])->name('orders.invoice');
+        Route::post('orders/{order}/courier', [Admin\CourierController::class, 'send'])->name('orders.courier');
+        Route::post('orders/{order}/courier/refresh', [Admin\CourierController::class, 'refresh'])->name('orders.courier.refresh');
+        Route::get('couriers/pathao/locations', [Admin\CourierController::class, 'pathaoLocations'])->name('couriers.pathao.locations');
+        Route::get('customers/lookup', [Admin\CustomerController::class, 'lookup'])->name('customers.lookup');
+        Route::resource('customers', Admin\CustomerController::class)->only('index', 'show', 'update')->parameters(['customers' => 'user']);
+        Route::get('fraud-check', [Admin\BlockedPhoneController::class, 'check'])->name('fraud.check');
+        Route::post('blocked-phones/unblock', [Admin\BlockedPhoneController::class, 'unblock'])->name('blocked-phones.unblock');
+        Route::resource('blocked-phones', Admin\BlockedPhoneController::class)->only('index', 'store', 'update', 'destroy');
+        Route::get('abandoned-carts', [Admin\AbandonedCartController::class, 'index'])->name('abandoned-carts.index');
+        Route::post('abandoned-carts/{checkout}/remind', [Admin\AbandonedCartController::class, 'remind'])->name('abandoned-carts.remind');
+        Route::delete('abandoned-carts/{checkout}', [Admin\AbandonedCartController::class, 'destroy'])->name('abandoned-carts.destroy');
+    });
+
+    Route::middleware('can:admin.catalog')->group(function () {
+        Route::resource('products', Admin\ProductController::class)->except('show');
+        Route::delete('products/{product}/images/{image}', [Admin\ProductController::class, 'destroyImage'])->name('products.images.destroy');
+        Route::resource('categories', Admin\CategoryController::class)->only('index', 'store', 'update', 'destroy');
+        Route::resource('brands', Admin\BrandController::class)->only('index', 'store', 'update', 'destroy');
+        Route::resource('pc-components', Admin\PcComponentController::class)->only('index', 'store', 'update', 'destroy');
+    });
+
+    Route::middleware('can:admin.marketing')->group(function () {
+        Route::resource('coupons', Admin\CouponController::class)->only('index', 'store', 'update', 'destroy');
+        Route::resource('flash-sales', Admin\FlashSaleController::class)->except('show');
+        Route::resource('banners', Admin\BannerController::class)->only('index', 'store', 'update', 'destroy');
+        Route::resource('offers', Admin\OfferController::class)->only('index', 'store', 'update', 'destroy');
+        Route::resource('pages', Admin\PageController::class)->only('index', 'store', 'update', 'destroy');
+    });
+
+    Route::middleware('can:admin.engagement')->group(function () {
+        Route::get('reviews', [Admin\ReviewController::class, 'index'])->name('reviews.index');
+        Route::patch('reviews/{review}', [Admin\ReviewController::class, 'update'])->name('reviews.update');
+        Route::delete('reviews/{review}', [Admin\ReviewController::class, 'destroy'])->name('reviews.destroy');
+        Route::get('questions', [Admin\ReviewController::class, 'questions'])->name('questions.index');
+        Route::patch('questions/{question}', [Admin\ReviewController::class, 'answer'])->name('questions.answer');
+        Route::delete('questions/{question}', [Admin\ReviewController::class, 'destroyQuestion'])->name('questions.destroy');
+        Route::get('messages', [Admin\SettingController::class, 'messages'])->name('messages');
+        Route::patch('messages/{message}', [Admin\SettingController::class, 'readMessage'])->name('messages.read');
+        Route::delete('messages/{message}', [Admin\SettingController::class, 'destroyMessage'])->name('messages.destroy');
+    });
+
+    Route::middleware('can:admin.reports')->group(function () {
+        Route::get('reports', [Admin\ReportController::class, 'index'])->name('reports');
+        Route::get('reports/export/{type}', [Admin\ReportController::class, 'export'])->whereIn('type', ['orders', 'products'])->name('reports.export');
+    });
+
+    Route::middleware('can:admin.settings')->group(function () {
+        Route::get('settings', [Admin\SettingController::class, 'edit'])->name('settings');
+        Route::put('settings', [Admin\SettingController::class, 'update'])->name('settings.update');
+        Route::post('settings/test-sms', [Admin\SettingController::class, 'testSms'])->name('settings.test-sms')->middleware('throttle:5,1');
+        Route::post('settings/test-email', [Admin\SettingController::class, 'testEmail'])->name('settings.test-email')->middleware('throttle:5,1');
+        Route::post('couriers/{courier}/test', [Admin\CourierController::class, 'test'])->name('couriers.test');
+        Route::get('system', [Admin\SystemController::class, 'index'])->name('system');
+        Route::post('system/backup', [Admin\SystemController::class, 'backup'])->name('system.backup')->middleware('throttle:3,10');
+        Route::get('system/backups/{name}', [Admin\SystemController::class, 'download'])->name('system.backups.download');
+        Route::post('system/retry-failed', [Admin\SystemController::class, 'retryFailed'])->name('system.retry-failed');
+    });
+
+    Route::middleware('can:admin.staff')->group(function () {
+        Route::resource('staff', Admin\StaffController::class)->only('index', 'store', 'update', 'destroy')->parameters(['staff' => 'user']);
+        Route::get('activity', [Admin\StaffController::class, 'activity'])->name('activity');
+    });
 });

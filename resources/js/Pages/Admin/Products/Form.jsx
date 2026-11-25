@@ -2,6 +2,7 @@ import { Link, router, useForm } from '@inertiajs/react';
 import { useEffect, useMemo } from 'react';
 import { Field, Select, TextArea, TextInput } from '../../../Components/Field';
 import SeoFields from '../../../Components/Admin/SeoFields';
+import VariantsEditor from '../../../Components/Admin/VariantsEditor';
 import { EmptyState, Panel, SubCard, Toggle } from '../../../Components/Admin/UI';
 import Icon from '../../../Components/Icon';
 import AdminLayout from '../../../Layouts/AdminLayout';
@@ -31,16 +32,20 @@ export default function Form({ product, categories, brands, stockStatuses }) {
         specs: product?.specs?.length ? product.specs.map(({ group, name, value }) => ({ group, name, value })) : [{ group: 'Basic Information', name: '', value: '' }],
         image: null,
         gallery: [],
+        variants: (product?.variants ?? []).map(({ id, options, sku, price, regular_price, stock, is_active }) => ({ id, options, sku: sku ?? '', price, regular_price: regular_price ?? '', stock, is_active })),
     });
     const set = (k) => (e) => form.setData(k, e.target.value);
     const e = form.errors;
 
     const submit = (ev) => {
         ev.preventDefault();
+        const hadVariants = (product?.variants?.length ?? 0) > 0;
+        const withVariants = (d) => ({ ...d, variants_cleared: hadVariants && d.variants.length === 0 ? 1 : 0, variants: d.variants.map(({ _new, ...v }) => ({ ...v, is_active: v.is_active ? 1 : 0 })) });
         if (editing) {
-            form.transform((d) => ({ ...d, _method: 'put' }));
+            form.transform((d) => ({ ...withVariants(d), _method: 'put' }));
             form.post(`/admin/products/${product.id}`, { forceFormData: true, preserveScroll: true, onSuccess: () => form.setData((d) => ({ ...d, image: null, gallery: [] })) });
         } else {
+            form.transform(withVariants);
             form.post('/admin/products', { forceFormData: true });
         }
     };
@@ -111,6 +116,8 @@ export default function Form({ product, categories, brands, stockStatuses }) {
                             </div>
                         </div>
                     </Panel>
+
+                    <VariantsEditor variants={form.data.variants} onChange={(v) => form.setData('variants', v)} errors={e} baseSku={form.data.sku} basePrice={form.data.price} />
 
                     <Panel title="Key Features">
                         <div className="space-y-2">

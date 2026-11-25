@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\LogsActivity;
 use App\Support\Phone;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class BlockedPhone extends Model
 {
+    use LogsActivity;
+
     protected $fillable = ['phone', 'reason', 'created_by'];
 
     public function creator(): BelongsTo

@@ -1,6 +1,8 @@
 import { Link } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
+import Countdown from '../Components/Countdown';
 import Icon from '../Components/Icon';
+import { t } from '../lib/i18n';
 import ProductCard from '../Components/ProductCard';
 import Seo from '../Components/Seo';
 import ShopLayout from '../Layouts/ShopLayout';
@@ -31,8 +33,8 @@ function Slider({ slides }) {
             </div>
             {slides.length > 1 && (
                 <>
-                    <button onClick={() => setI((i - 1 + slides.length) % slides.length)} className="absolute left-2 top-1/2 hidden -translate-y-1/2 rounded-full bg-black/30 sm:block p-1.5 text-white hover:bg-black/50" aria-label="Previous slide"><Icon name="chevronLeft" /></button>
-                    <button onClick={() => setI((i + 1) % slides.length)} className="absolute right-2 top-1/2 hidden -translate-y-1/2 rounded-full bg-black/30 sm:block p-1.5 text-white hover:bg-black/50" aria-label="Next slide"><Icon name="chevronRight" /></button>
+                    <button onClick={() => setI((i - 1 + slides.length) % slides.length)} className="absolute left-2 top-1/2 hidden -translate-y-1/2 rounded-full bg-black/30 sm:block p-1.5 text-white hover:bg-black/50" aria-label={t('Previous slide')}><Icon name="chevronLeft" /></button>
+                    <button onClick={() => setI((i + 1) % slides.length)} className="absolute right-2 top-1/2 hidden -translate-y-1/2 rounded-full bg-black/30 sm:block p-1.5 text-white hover:bg-black/50" aria-label={t('Next slide')}><Icon name="chevronRight" /></button>
                     <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1.5">
                         {slides.map((s, n) => (
                             <button key={s.id} onClick={() => setI(n)} className={`h-2 rounded-full transition-all ${n === i ? 'w-6 bg-accent-500' : 'w-2 bg-white/70'}`} aria-label={`Slide ${n + 1}`} />
@@ -53,7 +55,7 @@ function SectionTitle({ title, subtitle }) {
     );
 }
 
-export default function Home({ sliders, sideBanners, featuredCategories, featuredProducts, newArrivals, brands }) {
+export default function Home({ sliders, sideBanners, featuredCategories, featuredProducts, newArrivals, brands, flashSale = null }) {
     return (
         <>
             <Seo />
@@ -68,8 +70,23 @@ export default function Home({ sliders, sideBanners, featuredCategories, feature
                 </div>
             </section>
 
+            {flashSale && (
+                <section className="container-x mt-8">
+                    <div className="overflow-hidden rounded-lg bg-gradient-to-r from-red-600 to-accent-500 p-4 text-white sm:p-5">
+                        <div className="mb-4 flex flex-wrap items-center gap-3">
+                            <Icon name="gift" className="h-6 w-6" />
+                            <h2 className="text-xl font-bold">{flashSale.title}</h2>
+                            <span className="ml-auto flex items-center gap-2 text-sm">{t('Ends in')} <Countdown to={flashSale.ends_at} /></span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 text-slate-800 md:grid-cols-4 lg:grid-cols-6">
+                            {flashSale.products.map((p) => <ProductCard key={p.id} product={p} />)}
+                        </div>
+                    </div>
+                </section>
+            )}
+
             <section className="container-x mt-12">
-                <SectionTitle title="Featured Category" subtitle="Get your desired product from featured category!" />
+                <SectionTitle title={t('Featured Category')} subtitle={t('Get your desired product from featured category!')} />
                 <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8">
                     {featuredCategories.map((c) => (
                         <Link key={c.id} href={`/category/${c.slug}`} className="card flex flex-col items-center gap-2 p-4 text-center transition hover:-translate-y-0.5 hover:shadow-md">
@@ -81,14 +98,14 @@ export default function Home({ sliders, sideBanners, featuredCategories, feature
             </section>
 
             <section className="container-x mt-12">
-                <SectionTitle title="Featured Products" subtitle="Check & get your desired product!" />
+                <SectionTitle title={t('Featured Products')} subtitle={t('Check & get your desired product!')} />
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-6">
                     {featuredProducts.map((p) => <ProductCard key={p.id} product={p} />)}
                 </div>
             </section>
 
             <section className="container-x mt-12">
-                <SectionTitle title="New Arrivals" subtitle="Fresh in stock this week" />
+                <SectionTitle title={t('New Arrivals')} subtitle={t('Fresh in stock this week')} />
                 <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-6">
                     {newArrivals.map((p) => <ProductCard key={p.id} product={p} />)}
                 </div>
@@ -114,7 +131,7 @@ export default function Home({ sliders, sideBanners, featuredCategories, feature
 
             {brands.length > 0 && (
                 <section className="container-x mt-12">
-                    <SectionTitle title="Top Brands" />
+                    <SectionTitle title={t('Top Brands')} />
                     <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6">
                         {brands.map((b) => (
                             <Link key={b.id} href={`/brand/${b.slug}`} className="card flex h-16 items-center justify-center p-3 text-sm font-bold text-slate-600 hover:text-accent-600">
@@ -122,7 +139,7 @@ export default function Home({ sliders, sideBanners, featuredCategories, feature
                             </Link>
                         ))}
                     </div>
-                    <div className="mt-4 text-center"><Link href="/brands" className="text-sm font-semibold text-brand-600 hover:underline">View all brands</Link></div>
+                    <div className="mt-4 text-center"><Link href="/brands" className="text-sm font-semibold text-brand-600 hover:underline">{t('View all brands')}</Link></div>
                 </section>
             )}
         </>
