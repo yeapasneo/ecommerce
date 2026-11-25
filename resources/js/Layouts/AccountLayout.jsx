@@ -8,6 +8,7 @@ import { t } from '../lib/i18n';
 const links = [
     ['/account', 'dashboard', 'Dashboard'],
     ['/account/orders', 'receipt', 'Orders'],
+    ['/account/returns', 'refresh', 'Returns & Warranty'],
     ['/account/wishlist', 'heart', 'Wishlist'],
     ['/account/saved-pcs', 'cpu', 'Saved PCs'],
     ['/account/profile', 'user', 'Edit Profile'],

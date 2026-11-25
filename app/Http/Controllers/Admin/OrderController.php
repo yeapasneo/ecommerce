@@ -9,6 +9,7 @@ use App\Messaging\Sms\SmsManager;
 use App\Models\BlockedPhone;
 use App\Models\NotificationLog;
 use App\Models\Order;
+use App\Models\ReturnRequest;
 use App\Models\Setting;
 use App\Services\FraudCheck;
 use App\Services\OrderService;
@@ -54,6 +55,8 @@ class OrderController extends Controller
             'couriers' => app(CourierManager::class)->enabled(),
             'validity' => app(FraudCheck::class)->report($order->phone, $order->id),
             'editable' => self::editable($order),
+            'returns' => $order->returns()->get(['id', 'number', 'type', 'status', 'refund_amount', 'created_at']),
+            'returnStatuses' => ReturnRequest::STATUSES,
             'notificationLog' => NotificationLog::where('order_id', $order->id)->latest()->take(30)->get(),
             'courierDefaults' => [
                 'weight' => (float) (Setting::get('pathao_item_weight') ?: 0.5),

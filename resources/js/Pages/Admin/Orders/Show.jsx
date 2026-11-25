@@ -1,4 +1,5 @@
 import { Link, useForm } from '@inertiajs/react';
+import { useState } from 'react';
 import CourierPanel from '../../../Components/Admin/CourierPanel';
 import CustomerValidity from '../../../Components/Admin/CustomerValidity';
 import { Panel, Pill, SubCard } from '../../../Components/Admin/UI';
@@ -38,7 +39,27 @@ function ContactRow({ icon, children }) {
     );
 }
 
-export default function Show({ order, statuses, paymentStatuses, paymentMethods, deliveryMethods, couriers = {}, courierDefaults = {}, validity = null, notificationLog = [], editable = false }) {
+/** Serial / IMEI numbers of the units on one order line. */
+function Serials({ order, item }) {
+    const [open, setOpen] = useState(false);
+    const form = useForm({ serials: (item.serials ?? []).join('\n') });
+    if (!open) {
+        return (
+            <button type="button" onClick={() => setOpen(true)} className="mt-0.5 text-left text-xs text-primary-700 hover:underline">
+                {item.serials?.length ? <>Serial: <span className="font-mono">{item.serials.join(', ')}</span></> : '+ Add serial / IMEI'}
+            </button>
+        );
+    }
+    return (
+        <form onSubmit={(e) => { e.preventDefault(); form.put(`/admin/orders/${order.id}/items/${item.id}/serials`, { preserveScroll: true, onSuccess: () => setOpen(false) }); }} className="mt-1 space-y-1">
+            <textarea className="input min-w-[220px] font-mono text-xs" rows={Math.min(4, item.quantity)} value={form.data.serials} onChange={(e) => form.setData('serials', e.target.value)} placeholder={`One per line (${item.quantity} unit${item.quantity > 1 ? 's' : ''})`} aria-label="Serial numbers" autoFocus />
+            {form.errors.serials && <p className="text-xs text-red-600">{form.errors.serials}</p>}
+            <div className="flex gap-2"><button disabled={form.processing} className="btn-primary btn-sm">Save</button><button type="button" onClick={() => setOpen(false)} className="btn-outline btn-sm">Cancel</button></div>
+        </form>
+    );
+}
+
+export default function Show({ order, statuses, paymentStatuses, paymentMethods, deliveryMethods, couriers = {}, courierDefaults = {}, validity = null, notificationLog = [], editable = false, returns = [], returnStatuses = {} }) {
     const form = useForm({ status: order.status, payment_status: order.payment_status, paid_amount: order.paid_amount || '', comment: '' });
     const save = (e) => {
         e.preventDefault();
@@ -56,6 +77,7 @@ export default function Show({ order, statuses, paymentStatuses, paymentMethods,
                     <span className={`${soft} px-3 py-1 text-sm ${statusColor(order.status)}`}>{titleCase(order.status)}</span>
                     <a href={`/admin/orders/${order.id}/invoice`} target="_blank" rel="noreferrer" className="btn-outline"><Icon name="print" className="h-4 w-4" /> Invoice</a>
                     {editable && <Link href={`/admin/orders/${order.id}/edit`} className="btn-outline"><Icon name="edit" className="h-4 w-4" /> Edit order</Link>}
+                    {order.status === 'delivered' && <Link href={`/admin/orders/${order.id}/returns/create`} className="btn-outline"><Icon name="refresh" className="h-4 w-4" /> Return / claim</Link>}
                     <button form="order-form" disabled={form.processing || !form.isDirty} className="btn-primary"><Icon name="check" className="h-4 w-4" /> {form.processing ? 'Saving…' : 'Save changes'}</button>
                 </>
             }
@@ -79,7 +101,8 @@ export default function Show({ order, statuses, paymentStatuses, paymentMethods,
                                                             <span className="line-clamp-1 font-medium text-slate-900">{i.name}{i.variant_name && <span className="font-normal text-primary-700"> · {i.variant_name}</span>}</span>
                                                             {i.product && <a href={`/product/${i.product.slug}`} target="_blank" rel="noreferrer" className="shrink-0 text-slate-500 hover:text-primary-700" aria-label="Open in store"><Icon name="external" className="h-3.5 w-3.5" /></a>}
                                                         </div>
-                                                        <p className="font-mono text-xs text-slate-500">{i.sku}</p>
+                                                        <p className="font-mono text-xs text-slate-500">{i.sku}{i.warranty_months > 0 && <span className="font-sans"> · {i.warranty_months}-month warranty</span>}</p>
+                                                        <Serials order={order} item={i} />
                                                     </div>
                                                 </div>
                                             </td>
@@ -133,6 +156,7 @@ export default function Show({ order, statuses, paymentStatuses, paymentMethods,
                                 {order.tax > 0 && <><dt>VAT / Tax</dt><dd className="text-right">{money(order.tax)}</dd></>}
                                 {order.paid_amount > 0 && order.payment_status !== 'paid' && <><dt>Paid</dt><dd className="text-right">{money(order.paid_amount)}</dd></>}
                                 {order.due_amount > 0 && order.payment_status !== 'unpaid' && <><dt className="font-semibold text-slate-900">Due</dt><dd className="text-right font-semibold text-red-600">{money(order.due_amount)}</dd></>}
+                                {order.refunded_amount > 0 && <><dt>Refunded</dt><dd className="text-right text-green-700">−{money(order.refunded_amount)}</dd></>}
                             </dl>
                             <div className="rounded-xl border-2 border-primary-200 bg-primary-50/60 px-6 py-3 text-center">
                                 <p className="text-sm font-medium text-primary-700">Grand Total</p>
@@ -169,6 +193,19 @@ export default function Show({ order, statuses, paymentStatuses, paymentMethods,
                         </form>
                     </Panel>
 
+                    {returns.length > 0 && (
+                        <Panel title="Returns & claims" bodyClassName="px-6 pb-5">
+                            <ul className="divide-y divide-slate-100 text-sm">
+                                {returns.map((r) => (
+                                    <li key={r.id} className="flex items-center justify-between gap-2 py-2">
+                                        <Link href={`/admin/returns/${r.id}`} className="font-medium text-primary-700 hover:underline">{r.number}</Link>
+                                        <span className="text-xs text-slate-500">{r.type === 'warranty' ? 'Warranty' : 'Return'}{r.refund_amount > 0 && ` · ${money(r.refund_amount)} refunded`}</span>
+                                        <span className={`badge rounded-md ${statusColor(r.status)}`}>{returnStatuses[r.status]}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </Panel>
+                    )}
                     <CourierPanel order={order} couriers={couriers} defaults={courierDefaults} />
 
                     <Panel title="Customer Information">

@@ -8,6 +8,7 @@ use App\Models\Concerns\LogsActivity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class Order extends Model
@@ -36,7 +37,7 @@ class Order extends Model
     protected $fillable = [
         'order_number', 'user_id', 'first_name', 'last_name', 'email', 'phone', 'address', 'city', 'notes',
         'delivery_method', 'payment_method', 'payment_status', 'status', 'subtotal', 'delivery_charge', 'discount', 'total', 'coupon_code',
-        'gateway_ref', 'transaction_id', 'paid_at', 'source', 'tax', 'paid_amount',
+        'gateway_ref', 'transaction_id', 'paid_at', 'source', 'tax', 'paid_amount', 'refunded_amount',
         'courier', 'courier_consignment_id', 'courier_tracking_code', 'courier_status', 'courier_fee', 'courier_cod', 'courier_sent_at', 'courier_status_at',
     ];
 
@@ -47,6 +48,7 @@ class Order extends Model
         'total' => 'float',
         'tax' => 'float',
         'paid_amount' => 'float',
+        'refunded_amount' => 'float',
         'paid_at' => 'datetime',
         'courier_fee' => 'float',
         'courier_cod' => 'float',
@@ -82,6 +84,24 @@ class Order extends Model
     public function items(): HasMany
     {
         return $this->hasMany(OrderItem::class);
+    }
+
+    public function returns(): HasMany
+    {
+        return $this->hasMany(ReturnRequest::class)->latest('id');
+    }
+
+    /** When the order was delivered (from its history), or null. */
+    public function deliveredAt(): ?Carbon
+    {
+        if ($this->status !== 'delivered') {
+            return null;
+        }
+        $at = $this->relationLoaded('histories')
+            ? $this->histories->where('status', 'delivered')->sortBy('created_at')->first()?->created_at
+            : $this->histories()->where('status', 'delivered')->oldest('id')->value('created_at');
+
+        return $at ? Carbon::parse($at) : $this->updated_at;
     }
 
     public function histories(): HasMany

@@ -41,7 +41,7 @@ export default function Invoice({ order, paymentMethods, deliveryMethods }) {
                     <thead><tr><th>#</th><th>Item</th><th className="text-right">Price</th><th className="text-right">Qty</th><th className="text-right">Total</th></tr></thead>
                     <tbody>
                         {order.items.map((i, n) => (
-                            <tr key={i.id}><td>{n + 1}</td><td>{i.name}{i.variant_name && ` (${i.variant_name})`}<div className="text-xs text-slate-500">{i.sku}</div></td><td className="text-right">{money(i.price)}</td><td className="text-right">{i.quantity}</td><td className="text-right">{money(i.total)}</td></tr>
+                            <tr key={i.id}><td>{n + 1}</td><td>{i.name}{i.variant_name && ` (${i.variant_name})`}<div className="text-xs text-slate-500">{i.sku}{i.serials?.length > 0 && ` · S/N: ${i.serials.join(', ')}`}{i.warranty_months > 0 && ` · ${i.warranty_months}-month warranty`}</div></td><td className="text-right">{money(i.price)}</td><td className="text-right">{i.quantity}</td><td className="text-right">{money(i.total)}</td></tr>
                         ))}
                     </tbody>
                 </table>

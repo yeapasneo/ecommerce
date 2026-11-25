@@ -12,6 +12,7 @@ use App\Http\Controllers\HomeController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PcBuilderController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\ReturnController;
 use App\Http\Controllers\SeoController;
 use App\Http\Controllers\SiteController;
 use App\Http\Middleware\SetLocale;
@@ -118,6 +119,12 @@ Route::middleware('auth')->prefix('account')->name('account.')->controller(Accou
     Route::post('/wishlist', 'toggleWishlist')->name('wishlist.toggle');
     Route::get('/saved-pcs', 'savedPcs')->name('saved-pcs');
 });
+Route::middleware('auth')->prefix('account')->name('account.')->controller(ReturnController::class)->group(function () {
+    Route::get('/returns', 'index')->name('returns');
+    Route::get('/orders/{number}/return', 'create')->name('return.create');
+    Route::post('/orders/{number}/return', 'store')->name('return.store')->middleware('throttle:10,1');
+    Route::post('/returns/{number}/cancel', 'cancel')->name('return.cancel');
+});
 Route::middleware('auth')->group(function () {
     Route::post('/product/{product}/review', [ProductController::class, 'review'])->name('product.review');
     Route::post('/product/{product}/question', [ProductController::class, 'question'])->name('product.question');
@@ -143,6 +150,14 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         Route::post('blocked-phones/unblock', [Admin\BlockedPhoneController::class, 'unblock'])->name('blocked-phones.unblock');
         Route::resource('blocked-phones', Admin\BlockedPhoneController::class)->only('index', 'store', 'update', 'destroy');
         Route::get('abandoned-carts', [Admin\AbandonedCartController::class, 'index'])->name('abandoned-carts.index');
+        // Returns, refunds, warranty claims and serial numbers.
+        Route::get('returns', [Admin\ReturnController::class, 'index'])->name('returns.index');
+        Route::get('returns/{return}', [Admin\ReturnController::class, 'show'])->name('returns.show')->whereNumber('return');
+        Route::put('returns/{return}', [Admin\ReturnController::class, 'update'])->name('returns.update');
+        Route::get('orders/{order}/returns/create', [Admin\ReturnController::class, 'create'])->name('returns.create');
+        Route::post('orders/{order}/returns', [Admin\ReturnController::class, 'store'])->name('returns.store');
+        Route::put('orders/{order}/items/{item}/serials', [Admin\ReturnController::class, 'serials'])->name('orders.serials');
+        Route::get('warranty', [Admin\ReturnController::class, 'warranty'])->name('warranty');
         Route::post('abandoned-carts/{checkout}/remind', [Admin\AbandonedCartController::class, 'remind'])->name('abandoned-carts.remind');
         Route::delete('abandoned-carts/{checkout}', [Admin\AbandonedCartController::class, 'destroy'])->name('abandoned-carts.destroy');
     });

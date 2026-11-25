@@ -21,6 +21,11 @@ export const statusColor = (s) =>
         out_of_stock: 'bg-red-100 text-red-800',
         pre_order: 'bg-blue-100 text-blue-800',
         up_coming: 'bg-purple-100 text-purple-800',
+        requested: 'bg-amber-100 text-amber-800',
+        approved: 'bg-blue-100 text-blue-800',
+        received: 'bg-indigo-100 text-indigo-800',
+        completed: 'bg-green-100 text-green-800',
+        rejected: 'bg-red-100 text-red-800',
     })[s] ?? 'bg-slate-100 text-slate-700';
 
 export const titleCase = (s) => String(s ?? '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());

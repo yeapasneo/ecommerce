@@ -451,6 +451,16 @@ export default function Settings({ values, secretsSet, gateways, couriers, notif
                             </div>
                         </Panel>
 
+                        <Panel title="Returns & Warranty" icon="refresh">
+                            <div className="grid items-start gap-5 lg:grid-cols-2">
+                                <div className="space-y-4">
+                                    {toggle('returns_enabled', 'Customers can request returns and warranty claims', 'From a delivered order in their account. Staff can always open one from the order page.')}
+                                    {text('return_days', 'Return window (days after delivery)', { type: 'number', min: 0, max: 365, hint: 'Warranty claims are allowed until each product’s warranty ends.' })}
+                                </div>
+                                {toggle('notify_returns', 'Send SMS / email at each step', 'Approved, rejected, refunded and completed, with your note to the customer.')}
+                            </div>
+                        </Panel>
+
                         <Panel title="Abandoned Cart Reminders" icon="cart">
                             <div className="grid items-start gap-5 lg:grid-cols-2">
                                 <div className="space-y-4">

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
+use App\Models\ReturnRequest;
+use App\Models\Setting;
 use App\Models\Wishlist;
 use App\Services\OrderService;
 use Illuminate\Http\Request;
@@ -43,6 +45,9 @@ class AccountController extends Controller
             'order' => $order,
             'paymentMethods' => Order::PAYMENT_METHODS,
             'deliveryMethods' => Order::DELIVERY_METHODS,
+            'canReturn' => $order->status === 'delivered' && Setting::enabled('returns_enabled'),
+            'returns' => $order->returns()->get(['id', 'number', 'type', 'status', 'created_at']),
+            'returnStatuses' => ReturnRequest::STATUSES,
         ]);
     }
 

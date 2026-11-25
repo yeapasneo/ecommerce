@@ -93,6 +93,11 @@ class Setting extends Model
         'default_locale' => 'en',        // en | bn
         'abandoned_cart_enabled' => '0',
 
+        // Returns and warranty
+        'returns_enabled' => '1',
+        'return_days' => '7',
+        'notify_returns' => '1',
+
         // Inventory
         'low_stock_threshold' => '3',
         'low_stock_alerts' => '0',

@@ -8,6 +8,7 @@ use App\Models\Category;
 use App\Models\ContactMessage;
 use App\Models\Order;
 use App\Models\Question;
+use App\Models\ReturnRequest;
 use App\Models\Review;
 use App\Models\Setting;
 use App\Services\CartService;
@@ -51,6 +52,7 @@ class HandleInertiaRequests extends Middleware
                 'orders' => Order::where('status', 'pending')->count(),
                 'reviews' => Review::where('is_approved', false)->count(),
                 'questions' => Question::whereNull('answer')->count(),
+                'returns' => ReturnRequest::where('status', 'requested')->count(),
                 'messages' => ContactMessage::where('is_read', false)->count(),
             ] : null,
             'flash' => [

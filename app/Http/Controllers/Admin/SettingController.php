@@ -71,7 +71,7 @@ class SettingController extends Controller
     public function update(Request $request, PaymentManager $payments, CourierManager $couriers)
     {
         $flags = ['seo_noindex', 'cod_enabled', 'bkash_enabled', 'bkash_sandbox', 'nagad_enabled', 'nagad_sandbox', 'sslcommerz_enabled', 'sslcommerz_sandbox', 'eps_enabled', 'eps_sandbox',
-            'courier_sync_status', 'steadfast_enabled', 'pathao_enabled', 'pathao_sandbox', 'checkout_otp', 'emi_enabled', 'abandoned_cart_enabled', 'ai_chat_enabled', 'ai_writer_auto', 'low_stock_alerts',
+            'courier_sync_status', 'steadfast_enabled', 'pathao_enabled', 'pathao_sandbox', 'checkout_otp', 'emi_enabled', 'abandoned_cart_enabled', 'ai_chat_enabled', 'ai_writer_auto', 'low_stock_alerts', 'returns_enabled', 'notify_returns',
             ...collect(OrderNotifier::EVENTS)->keys()->flatMap(fn ($e) => ["notify_sms_{$e}", "notify_email_{$e}"])->all()];
         $rules = collect(Setting::DEFAULTS)->map(fn () => ['nullable', 'string', 'max:1000'])->all();
         foreach (['delivery_charge_inside', 'delivery_charge_outside', 'express_delivery_charge', 'free_delivery_over'] as $k) {
@@ -112,6 +112,7 @@ class SettingController extends Controller
         $rules['steadfast_webhook_token'] = ['nullable', 'string', 'min:16', 'max:100'];
         $rules['pathao_webhook_secret'] = ['nullable', 'string', 'min:16', 'max:100'];
         $rules['seo_og_image_remove'] = ['nullable', 'boolean'];
+        $rules['return_days'] = ['nullable', 'integer', 'min:0', 'max:365'];
         $rules['low_stock_threshold'] = ['nullable', 'integer', 'min:0', 'max:1000'];
         $rules['low_stock_email'] = ['nullable', 'email', 'max:255'];
         $rules['ai_provider'] = ['nullable', Rule::in(array_keys(AiClient::PROVIDERS))];

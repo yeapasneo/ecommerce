@@ -138,6 +138,8 @@ export default function Reports({ range, totals, previous, cancelled, newCustome
                 <Panel title="Revenue per day"><Chart series={series} /></Panel>
                 <Panel title="Money" bodyClassName="px-6 pb-5">
                     <dl className="grid grid-cols-[1fr_auto] gap-y-2 text-sm tabular-nums">
+                        <dt className="text-slate-500">Refunds paid</dt><dd className="text-right text-red-600">{money(totals.refunds)}</dd>
+                        <dt className="text-slate-500">Revenue after refunds</dt><dd className="text-right font-medium">{money(totals.netRevenue)}</dd>
                         <dt className="text-slate-500">Cost of goods sold</dt><dd className="text-right">{money(totals.cost)}</dd>
                         <dt className="text-slate-500">Discounts given</dt><dd className="text-right">{money(totals.discount)}</dd>
                         <dt className="text-slate-500">VAT collected</dt><dd className="text-right">{money(totals.tax)}</dd>

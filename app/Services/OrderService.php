@@ -111,6 +111,7 @@ class OrderService
                 'sku' => $variant?->sku ?: $product->sku,
                 'price' => $price,
                 'cost_price' => $variant?->cost_price ?? $product->cost_price,
+                'warranty_months' => $product->warranty_months,
                 'quantity' => $qty,
                 'total' => $price * $qty,
             ]);

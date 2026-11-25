@@ -78,6 +78,14 @@ class ReportController extends Controller
         // Order discounts are shared across items by value; delivery and VAT are passed through, not profit.
         $netKnown = (float) $c->known_sales - (float) $row->discount * $share;
         $profit = $netKnown - (float) $c->cogs;
+        // Refunds paid in the period come off revenue and profit; items put back on sale keep their cost.
+        $refunds = (float) DB::table('return_requests')->whereBetween('refunded_at', [$from, $to])->sum('refund_amount');
+        $restocked = (float) DB::table('return_request_items')->join('return_requests', 'return_requests.id', '=', 'return_request_items.return_request_id')
+            ->join('order_items', 'order_items.id', '=', 'return_request_items.order_item_id')
+            ->leftJoin('products as p', 'p.id', '=', 'order_items.product_id')->leftJoin('product_variants as pv', 'pv.id', '=', 'order_items.variant_id')
+            ->whereBetween('return_requests.refunded_at', [$from, $to])->where('return_request_items.restock', true)
+            ->sum(DB::raw('return_request_items.quantity * coalesce('.self::COST.', 0)'));
+        $profit -= $refunds - $restocked;
 
         return [
             'revenue' => $revenue,
@@ -91,6 +99,8 @@ class ReportController extends Controller
             'outstanding' => max(0, $revenue - (float) $row->collected),
             'customers' => (int) $row->customers,
             'cost' => (float) $c->cogs,
+            'refunds' => $refunds,
+            'netRevenue' => $revenue - $refunds,
             'profit' => round($profit, 2),
             'margin' => $netKnown > 0 ? round($profit / $netKnown * 100, 1) : null,
             'costCoverage' => (int) round($share * 100),
@@ -150,12 +160,12 @@ class ReportController extends Controller
             $out = fopen('php://output', 'w');
             fwrite($out, "\xEF\xBB\xBF"); // UTF-8 BOM so Excel shows ৳ and Bangla correctly
             if ($type === 'orders') {
-                fputcsv($out, ['Order', 'Date', 'Status', 'Source', 'Customer', 'Phone', 'City', 'Items', 'Subtotal', 'Discount', 'VAT', 'Delivery', 'Total', 'Paid', 'Due', 'Payment method', 'Payment status', 'Courier', 'Consignment']);
+                fputcsv($out, ['Order', 'Date', 'Status', 'Source', 'Customer', 'Phone', 'City', 'Items', 'Subtotal', 'Discount', 'VAT', 'Delivery', 'Total', 'Paid', 'Refunded', 'Due', 'Payment method', 'Payment status', 'Courier', 'Consignment']);
                 Order::whereBetween('created_at', [$from, $to])->withSum('items as qty', 'quantity')->orderBy('id')
                     ->chunk(500, function ($orders) use ($out) {
                         foreach ($orders as $o) {
                             fputcsv($out, [$o->order_number, $o->created_at->format('Y-m-d H:i'), $o->status, $o->source, trim($o->first_name.' '.$o->last_name), $o->phone, $o->city,
-                                (int) $o->qty, $o->subtotal, $o->discount, $o->tax, $o->delivery_charge, $o->total, $o->paid_amount, $o->due_amount,
+                                (int) $o->qty, $o->subtotal, $o->discount, $o->tax, $o->delivery_charge, $o->total, $o->paid_amount, $o->refunded_amount, $o->due_amount,
                                 Order::PAYMENT_METHODS[$o->payment_method] ?? $o->payment_method, $o->payment_status, $o->courier, $o->courier_consignment_id]);
                         }
                     });
