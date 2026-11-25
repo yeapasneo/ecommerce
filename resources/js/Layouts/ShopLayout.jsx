@@ -2,6 +2,7 @@ import { Link, useForm, usePage } from '@inertiajs/react';
 import { useEffect, useState } from 'react';
 import ChatAssistant from '../Components/ChatAssistant';
 import ContactButtons from '../Components/ContactButtons';
+import InstallApp from '../Components/InstallApp';
 import Flash from '../Components/Flash';
 import Icon from '../Components/Icon';
 import SearchBox from '../Components/SearchBox';
@@ -171,6 +172,7 @@ function Footer({ settings }) {
                         {settings.youtube && <a href={settings.youtube} target="_blank" rel="noreferrer" className="hover:text-accent-400">{t('YouTube')}</a>}
                         {settings.instagram && <a href={settings.instagram} target="_blank" rel="noreferrer" className="hover:text-accent-400">{t('Instagram')}</a>}
                     </div>
+                    <InstallApp className="mt-4" />
                 </div>
             </div>
             <div className="border-t border-white/10 py-4 text-center text-xs text-slate-400">

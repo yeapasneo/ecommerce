@@ -20,3 +20,8 @@ createInertiaApp({
     },
     progress: { color: '#f97316' },
 });
+
+// Installable app: register the service worker on the store (not the admin panel).
+if (import.meta.env.PROD && 'serviceWorker' in navigator && !window.location.pathname.startsWith('/admin')) {
+    window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+}

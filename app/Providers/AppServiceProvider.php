@@ -2,7 +2,19 @@
 
 namespace App\Providers;
 
+use App\Http\Middleware\CacheGuestPages;
 use App\Messaging\MailConfig;
+use App\Models\Banner;
+use App\Models\Brand;
+use App\Models\Category;
+use App\Models\FlashSale;
+use App\Models\Offer;
+use App\Models\Page;
+use App\Models\Product;
+use App\Models\ProductImage;
+use App\Models\ProductVariant;
+use App\Models\Question;
+use App\Models\Review;
 use App\Models\User;
 use App\Support\Activity;
 use App\Support\Analytics;
@@ -64,6 +76,16 @@ class AppServiceProvider extends ServiceProvider
         foreach (array_keys(User::PERMISSIONS) as $permission) {
             Gate::define("admin.{$permission}", fn (User $user) => $user->hasPermission($permission));
         }
+        // Guest page cache: drop cached pages when anything shown on them changes.
+        $shown = [Product::class, ProductVariant::class, ProductImage::class, Category::class,
+            Brand::class, Banner::class, Offer::class, Page::class, FlashSale::class,
+            Review::class, Question::class];
+        Event::listen(['eloquent.saved: *', 'eloquent.deleted: *'], function (string $event, array $data) use ($shown) {
+            if (in_array($data[0]::class, $shown, true)) {
+                CacheGuestPages::flush();
+            }
+        });
+
         // Redis stopped answering: re-check on the next request instead of trusting the old result.
         Event::listen(CacheFailedOver::class, fn () => CacheDriver::forget(CacheDriver::stateFile()));
 

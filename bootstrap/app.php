@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\CacheGuestPages;
 use App\Http\Middleware\CaptureReferral;
 use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\EnsureUserIsAdmin;
@@ -30,7 +31,7 @@ return Application::configure(basePath: dirname(__DIR__))
             HandleInertiaRequests::class,
             EnsureUserIsActive::class,
         ]);
-        $middleware->alias(['admin' => EnsureUserIsAdmin::class]);
+        $middleware->alias(['admin' => EnsureUserIsAdmin::class, 'page.cache' => CacheGuestPages::class]);
         $middleware->redirectUsersTo(fn (Request $request) => $request->user()?->is_admin ? route('admin.dashboard') : route('account.index'));
     })
     ->withExceptions(function (Exceptions $exceptions): void {

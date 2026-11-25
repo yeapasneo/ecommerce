@@ -18,17 +18,19 @@ use App\Http\Controllers\SeoController;
 use App\Http\Controllers\SiteController;
 use App\Http\Middleware\SetLocale;
 use App\Models\AbandonedCheckout;
+use App\Models\Setting;
 use App\Services\AbandonedCarts;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 
 // Storefront
-Route::get('/', [HomeController::class, 'index'])->name('home');
-Route::get('/category/{slug}', [CategoryController::class, 'show'])->name('category.show');
-Route::get('/brands', [CategoryController::class, 'brands'])->name('brands.index');
-Route::get('/brand/{slug}', [CategoryController::class, 'brand'])->name('brand.show');
-Route::get('/search', [CategoryController::class, 'search'])->name('search');
-Route::get('/search/suggest', [CategoryController::class, 'suggest'])->name('search.suggest');
-Route::get('/product/{slug}', [ProductController::class, 'show'])->name('product.show');
+Route::get('/', [HomeController::class, 'index'])->name('home')->middleware('page.cache');
+Route::get('/category/{slug}', [CategoryController::class, 'show'])->name('category.show')->middleware('page.cache');
+Route::get('/brands', [CategoryController::class, 'brands'])->name('brands.index')->middleware('page.cache');
+Route::get('/brand/{slug}', [CategoryController::class, 'brand'])->name('brand.show')->middleware('page.cache');
+Route::get('/search', [CategoryController::class, 'search'])->name('search')->middleware('page.cache');
+Route::get('/search/suggest', [CategoryController::class, 'suggest'])->name('search.suggest')->middleware('page.cache');
+Route::get('/product/{slug}', [ProductController::class, 'show'])->name('product.show')->middleware('page.cache');
 
 Route::get('/compare', [CompareController::class, 'index'])->name('compare.index');
 Route::post('/compare', [CompareController::class, 'add'])->name('compare.add');
@@ -43,6 +45,32 @@ Route::delete('/cart/coupon/remove', [CartController::class, 'removeCoupon'])->n
 
 Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
 Route::post('/checkout/quote', [CheckoutController::class, 'quote'])->name('checkout.quote');
+// Installable app (PWA) manifest, from the store settings.
+Route::get('/manifest.webmanifest', function () {
+    $s = fn ($k) => Setting::get($k);
+
+    return response()->json([
+        'name' => $s('site_name'),
+        'short_name' => Str::limit((string) $s('site_name'), 12, ''),
+        'description' => $s('tagline'),
+        'start_url' => '/?source=app',
+        'scope' => '/',
+        'display' => 'standalone',
+        'background_color' => '#ffffff',
+        'theme_color' => '#0f3d5c',
+        'icons' => [
+            ['src' => '/icons/icon-192.png', 'sizes' => '192x192', 'type' => 'image/png'],
+            ['src' => '/icons/icon-512.png', 'sizes' => '512x512', 'type' => 'image/png'],
+            ['src' => '/icons/maskable-512.png', 'sizes' => '512x512', 'type' => 'image/png', 'purpose' => 'maskable'],
+        ],
+        'shortcuts' => [
+            ['name' => 'Search', 'url' => '/search'],
+            ['name' => 'Cart', 'url' => '/cart'],
+            ['name' => 'My orders', 'url' => '/account/orders'],
+        ],
+    ], 200, ['Content-Type' => 'application/manifest+json', 'Cache-Control' => 'public, max-age=86400']);
+})->name('manifest');
+
 // Catalogue feeds (same Google RSS format; Meta reads it too).
 Route::get('/feeds/google.xml', [FeedController::class, 'show'])->name('feeds.google');
 Route::get('/feeds/facebook.xml', [FeedController::class, 'show'])->name('feeds.facebook');
@@ -91,12 +119,12 @@ Route::prefix('pc-builder')->name('pc-builder.')->controller(PcBuilderController
     });
 });
 
-Route::get('/offers', [SiteController::class, 'offers'])->name('offers');
+Route::get('/offers', [SiteController::class, 'offers'])->name('offers')->middleware('page.cache');
 Route::get('/track-order', [SiteController::class, 'track'])->name('track');
 Route::get('/contact', [SiteController::class, 'contact'])->name('contact');
 Route::post('/contact', [SiteController::class, 'sendContact'])->name('contact.send')->middleware('throttle:5,1');
 Route::post('/newsletter', [SiteController::class, 'subscribe'])->name('newsletter')->middleware('throttle:5,1');
-Route::get('/page/{slug}', [SiteController::class, 'page'])->name('page');
+Route::get('/page/{slug}', [SiteController::class, 'page'])->name('page')->middleware('page.cache');
 
 // Auth
 Route::middleware('guest')->controller(AuthController::class)->group(function () {

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Http\Middleware\CacheGuestPages;
 use Illuminate\Contracts\Encryption\DecryptException;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Cache;
@@ -113,6 +114,10 @@ class Setting extends Model
         'referral_enabled' => '0',
         'referral_bonus' => '200', // points for the person who invited
         'referral_welcome' => '100', // points for the new customer
+
+        // Speed: full-page cache for guests
+        'page_cache_enabled' => '1',
+        'page_cache_minutes' => '5',
 
         // Chat buttons (WhatsApp / Messenger)
         'whatsapp_number' => '',
@@ -232,6 +237,7 @@ class Setting extends Model
 
     public static function put(array $values): void
     {
+        CacheGuestPages::flush(); // settings appear on every page
         foreach ($values as $key => $value) {
             if (in_array($key, self::SECRETS, true) && $value !== null && $value !== '') {
                 $value = Crypt::encryptString((string) $value);

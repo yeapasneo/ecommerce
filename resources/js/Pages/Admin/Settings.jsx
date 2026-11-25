@@ -280,6 +280,12 @@ export default function Settings({ values, secretsSet, gateways, couriers, notif
                                     {text('instagram', 'Instagram URL')}
                                 </div>
                             </Panel>
+                            <Panel title="Speed" icon="dashboard">
+                                <div className="space-y-4">
+                                    {toggle('page_cache_enabled', 'Fast pages for visitors', 'Keeps ready-made copies of the home, category, product and search pages for visitors who are not signed in and have an empty cart. Copies are dropped as soon as a product, banner, page or setting changes.')}
+                                    {flag(form.data.page_cache_enabled) && text('page_cache_minutes', 'Keep pages for (minutes)', { type: 'number', min: 1, max: 60 })}
+                                </div>
+                            </Panel>
                             <Panel title="Chat Buttons" icon="chat">
                                 <p className="-mt-2 mb-4 text-sm text-slate-500">Round WhatsApp and Messenger buttons on every store page, an “Ask on WhatsApp” link on products, and a “talk to a person” option in the AI chat. Leave blank to hide.</p>
                                 <div className="grid gap-4">
