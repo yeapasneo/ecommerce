@@ -14,6 +14,7 @@ const nav = [
         ['/admin/products', 'box', 'Products', null, 'catalog'],
         ['/admin/categories', 'folder', 'Categories', null, 'catalog'],
         ['/admin/brands', 'tag', 'Brands', null, 'catalog'],
+        ['/admin/ai-writer', 'sparkle', 'AI Writer', null, 'catalog'],
         ['/admin/customers', 'users', 'Customers', null, 'orders'],
         ['/admin/abandoned-carts', 'cart', 'Abandoned Carts', null, 'orders'],
         ['/admin/blocked-phones', 'shield', 'Blocked Numbers', null, 'orders'],

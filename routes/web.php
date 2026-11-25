@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AccountController;
 use App\Http\Controllers\Admin;
+use App\Http\Controllers\AssistantController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\CategoryController;
@@ -40,6 +41,7 @@ Route::delete('/cart/coupon/remove', [CartController::class, 'removeCoupon'])->n
 
 Route::get('/checkout', [CheckoutController::class, 'index'])->name('checkout.index');
 Route::post('/checkout/quote', [CheckoutController::class, 'quote'])->name('checkout.quote');
+Route::post('/assistant', [AssistantController::class, 'reply'])->name('assistant')->middleware('throttle:12,1');
 Route::post('/checkout/contact', [CheckoutController::class, 'contact'])->name('checkout.contact')->middleware('throttle:30,1');
 Route::get('/cart/recover/{token}', function (string $token, AbandonedCarts $carts) {
     $record = AbandonedCheckout::where('token', $token)->whereNull('recovered_at')->first();
@@ -151,6 +153,15 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         Route::resource('categories', Admin\CategoryController::class)->only('index', 'store', 'update', 'destroy');
         Route::resource('brands', Admin\BrandController::class)->only('index', 'store', 'update', 'destroy');
         Route::resource('pc-components', Admin\PcComponentController::class)->only('index', 'store', 'update', 'destroy');
+
+        // AI Writer: product texts written by AI and approved by staff.
+        Route::get('ai-writer', [Admin\AiController::class, 'index'])->name('ai.index');
+        Route::post('ai-writer/queue', [Admin\AiController::class, 'queue'])->name('ai.queue');
+        Route::post('ai-writer/approve-all', [Admin\AiController::class, 'approveAll'])->name('ai.approve-all');
+        Route::post('ai-writer/{draft}/approve', [Admin\AiController::class, 'approve'])->name('ai.approve');
+        Route::post('ai-writer/{draft}/reject', [Admin\AiController::class, 'reject'])->name('ai.reject');
+        Route::post('ai-writer/{draft}/retry', [Admin\AiController::class, 'retry'])->name('ai.retry')->middleware('throttle:20,1');
+        Route::post('products/{product}/ai-write', [Admin\AiController::class, 'write'])->name('products.ai-write')->middleware('throttle:20,1');
     });
 
     Route::middleware('can:admin.marketing')->group(function () {
@@ -182,6 +193,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         Route::get('settings', [Admin\SettingController::class, 'edit'])->name('settings');
         Route::put('settings', [Admin\SettingController::class, 'update'])->name('settings.update');
         Route::post('settings/test-sms', [Admin\SettingController::class, 'testSms'])->name('settings.test-sms')->middleware('throttle:5,1');
+        Route::post('settings/test-ai', [Admin\SettingController::class, 'testAi'])->name('settings.test-ai')->middleware('throttle:5,1');
         Route::post('settings/test-email', [Admin\SettingController::class, 'testEmail'])->name('settings.test-email')->middleware('throttle:5,1');
         Route::post('couriers/{courier}/test', [Admin\CourierController::class, 'test'])->name('couriers.test');
         Route::get('system', [Admin\SystemController::class, 'index'])->name('system');

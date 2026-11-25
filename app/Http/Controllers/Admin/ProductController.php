@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Ai\AiClient;
 use App\Http\Controllers\Controller;
 use App\Models\Brand;
 use App\Models\Category;
@@ -121,6 +122,7 @@ class ProductController extends Controller
             'categories' => Category::orderBy('name')->get(['id', 'name', 'parent_id']),
             'brands' => Brand::orderBy('name')->get(['id', 'name']),
             'stockStatuses' => Product::STOCK_STATUSES,
+            'aiReady' => app(AiClient::class)->isConfigured(),
         ];
     }
 
@@ -183,6 +185,9 @@ class ProductController extends Controller
             'key_features' => ['nullable', 'array'],
             'key_features.*' => ['nullable', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
+            'key_features_bn' => ['nullable', 'array'],
+            'key_features_bn.*' => ['nullable', 'string', 'max:255'],
+            'description_bn' => ['nullable', 'string'],
             'is_active' => ['boolean'],
             'is_featured' => ['boolean'],
             'meta_title' => ['nullable', 'string', 'max:255'],
@@ -215,6 +220,9 @@ class ProductController extends Controller
             $data['slug'] .= '-'.Str::lower(Str::random(4));
         }
         $data['key_features'] = array_values(array_filter($data['key_features'] ?? [], fn ($f) => trim((string) $f) !== ''));
+        if (array_key_exists('key_features_bn', $data)) {
+            $data['key_features_bn'] = array_values(array_filter($data['key_features_bn'] ?? [], fn ($f) => trim((string) $f) !== '')) ?: null;
+        }
 
         if ($request->hasFile('image')) {
             if ($product?->image && ! Str::startsWith($product->image, ['http', '/'])) {

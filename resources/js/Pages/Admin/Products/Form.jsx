@@ -1,5 +1,5 @@
 import { Link, router, useForm } from '@inertiajs/react';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Field, Select, TextArea, TextInput } from '../../../Components/Field';
 import SeoFields from '../../../Components/Admin/SeoFields';
 import VariantsEditor from '../../../Components/Admin/VariantsEditor';
@@ -8,7 +8,7 @@ import Icon from '../../../Components/Icon';
 import AdminLayout from '../../../Layouts/AdminLayout';
 import { money } from '../../../lib/format';
 
-export default function Form({ product, categories, brands, stockStatuses }) {
+export default function Form({ product, categories, brands, stockStatuses, aiReady }) {
     const editing = !!product;
     const form = useForm({
         name: product?.name ?? '',
@@ -24,6 +24,8 @@ export default function Form({ product, categories, brands, stockStatuses }) {
         warranty_months: product?.warranty_months ?? '',
         key_features: product?.key_features?.length ? product.key_features : [''],
         description: product?.description ?? '',
+        description_bn: product?.description_bn ?? '',
+        key_features_bn: product?.key_features_bn ?? [],
         is_active: product?.is_active ?? true,
         is_featured: product?.is_featured ?? false,
         meta_title: product?.meta_title ?? '',
@@ -36,6 +38,33 @@ export default function Form({ product, categories, brands, stockStatuses }) {
     });
     const set = (k) => (e) => form.setData(k, e.target.value);
     const e = form.errors;
+
+    // "Write with AI": fills the texts from the saved specs; nothing is saved until Update.
+    const [ai, setAi] = useState(null);
+    const writeWithAi = async () => {
+        setAi({ loading: true });
+        try {
+            const res = await fetch(`/admin/products/${product.id}/ai-write`, {
+                method: 'POST',
+                headers: { Accept: 'application/json', 'X-XSRF-TOKEN': decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] ?? '') },
+            });
+            const body = await res.json().catch(() => ({}));
+            if (!res.ok) return setAi({ error: body.message || 'The AI could not write this time. Try again.' });
+            const f = body.fields ?? {};
+            form.setData((d) => ({
+                ...d,
+                ...(f.description ? { description: f.description } : {}),
+                ...(f.key_features?.length ? { key_features: f.key_features } : {}),
+                ...(f.meta_title ? { meta_title: f.meta_title } : {}),
+                ...(f.meta_description ? { meta_description: f.meta_description } : {}),
+                ...(f.description_bn ? { description_bn: f.description_bn } : {}),
+                ...(f.key_features_bn?.length ? { key_features_bn: f.key_features_bn } : {}),
+            }));
+            setAi({ done: true });
+        } catch {
+            setAi({ error: 'Could not reach the server.' });
+        }
+    };
 
     const submit = (ev) => {
         ev.preventDefault();
@@ -82,7 +111,16 @@ export default function Form({ product, categories, brands, stockStatuses }) {
         >
             <form id="product-form" onSubmit={submit} className="grid items-start gap-6 xl:grid-cols-[1fr_420px]">
                 <div className="space-y-6">
-                    <Panel title="Product Details">
+                    <Panel
+                        title="Product Details"
+                        actions={editing && aiReady && (
+                            <button type="button" onClick={writeWithAi} disabled={ai?.loading} className="btn-outline btn-sm" title="Writes the description, key features, SEO and Bangla text from the saved specs">
+                                <Icon name="sparkle" className="h-4 w-4" /> {ai?.loading ? 'Writing…' : 'Write with AI'}
+                            </button>
+                        )}
+                    >
+                        {ai?.done && <p className="mb-4 rounded-lg bg-primary-50 px-3 py-2 text-sm text-primary-800" role="status">AI filled in the description, key features, SEO and Bangla text. Check them, then click Update to save.</p>}
+                        {ai?.error && <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700" role="alert">{ai.error}</p>}
                         <div className="grid gap-4 sm:grid-cols-2">
                             <TextInput label="Product Name*" className="sm:col-span-2" value={form.data.name} onChange={set('name')} error={e.name} placeholder="e.g. AMD Ryzen 5 7600 Processor" />
                             <TextInput label="SKU / Product Code*" value={form.data.sku} onChange={set('sku')} error={e.sku} />
@@ -129,6 +167,14 @@ export default function Form({ product, categories, brands, stockStatuses }) {
                             ))}
                         </div>
                         <button type="button" onClick={() => form.setData('key_features', [...form.data.key_features, ''])} className="mt-3 inline-flex items-center gap-1.5 text-sm font-medium text-primary-700 hover:underline"><Icon name="plus" className="h-4 w-4" /> Add feature</button>
+                    </Panel>
+
+                    <Panel title="Bangla Text" defaultOpen={!!(form.data.description_bn || form.data.key_features_bn.length)}>
+                        <p className="-mt-2 mb-4 text-sm text-slate-500">Shown when a shopper switches the store to বাংলা. Leave blank to show the English text.</p>
+                        <div className="grid gap-4">
+                            <TextArea label="Key features (one per line)" rows={4} value={form.data.key_features_bn.join('\n')} onChange={(ev) => form.setData('key_features_bn', ev.target.value.split('\n'))} error={e.key_features_bn} />
+                            <TextArea label="Description (HTML allowed)" rows={6} value={form.data.description_bn} onChange={set('description_bn')} error={e.description_bn} />
+                        </div>
                     </Panel>
 
                     <Panel title="Specifications">

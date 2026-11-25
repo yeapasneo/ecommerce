@@ -25,7 +25,7 @@ class Product extends Model
     protected $fillable = [
         'category_id', 'brand_id', 'name', 'slug', 'sku', 'model', 'price', 'regular_price', 'stock', 'stock_status',
         'key_features', 'description', 'image', 'warranty_months', 'is_active', 'is_featured', 'meta_title', 'meta_description', 'meta_keywords',
-        'has_variants',
+        'has_variants', 'description_bn', 'key_features_bn',
     ];
 
     /** Storefront prices include running flash sales; the admin panel turns this off to edit real prices. */
@@ -33,6 +33,7 @@ class Product extends Model
 
     protected $casts = [
         'key_features' => 'array',
+        'key_features_bn' => 'array',
         'price' => 'float',
         'regular_price' => 'float',
         'is_active' => 'boolean',

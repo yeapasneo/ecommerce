@@ -18,6 +18,12 @@ class ProductController extends Controller
         $product = Product::active()->where('slug', $slug)
             ->with(['brand:id,name,slug', 'category', 'images', 'specs'])->firstOrFail();
         $product->increment('views');
+        // Bangla storefront: show the Bangla texts when the product has them.
+        if (app()->getLocale() === 'bn') {
+            $product->description = $product->description_bn ?: $product->description;
+            $product->key_features = $product->key_features_bn ?: $product->key_features;
+        }
+        $product->makeHidden(['description_bn', 'key_features_bn']);
 
         $reviews = $product->reviews()->where('is_approved', true)->with('user:id,name')->latest()->get();
         $user = auth()->user();

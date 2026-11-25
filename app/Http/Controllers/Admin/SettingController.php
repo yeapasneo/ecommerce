@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Ai\AiClient;
+use App\Ai\AiException;
 use App\Couriers\CourierManager;
 use App\Http\Controllers\Controller;
 use App\Messaging\MailConfig;
@@ -58,13 +60,18 @@ class SettingController extends Controller
                 'mailReady' => MailConfig::isConfigured(),
             ],
             'ogImageUrl' => $all['seo_og_image'] ? media_url($all['seo_og_image']) : null,
+            'ai' => [
+                'providers' => collect(AiClient::PROVIDERS)->map(fn ($p) => ['label' => $p['label'], 'key_url' => $p['key_url']]),
+                'ready' => app(AiClient::class)->isConfigured(),
+                'usedToday' => app(AiClient::class)->usedToday(),
+            ],
         ]);
     }
 
     public function update(Request $request, PaymentManager $payments, CourierManager $couriers)
     {
         $flags = ['seo_noindex', 'cod_enabled', 'bkash_enabled', 'bkash_sandbox', 'nagad_enabled', 'nagad_sandbox', 'sslcommerz_enabled', 'sslcommerz_sandbox', 'eps_enabled', 'eps_sandbox',
-            'courier_sync_status', 'steadfast_enabled', 'pathao_enabled', 'pathao_sandbox', 'checkout_otp', 'emi_enabled', 'abandoned_cart_enabled',
+            'courier_sync_status', 'steadfast_enabled', 'pathao_enabled', 'pathao_sandbox', 'checkout_otp', 'emi_enabled', 'abandoned_cart_enabled', 'ai_chat_enabled', 'ai_writer_auto',
             ...collect(OrderNotifier::EVENTS)->keys()->flatMap(fn ($e) => ["notify_sms_{$e}", "notify_email_{$e}"])->all()];
         $rules = collect(Setting::DEFAULTS)->map(fn () => ['nullable', 'string', 'max:1000'])->all();
         foreach (['delivery_charge_inside', 'delivery_charge_outside', 'express_delivery_charge', 'free_delivery_over'] as $k) {
@@ -105,6 +112,15 @@ class SettingController extends Controller
         $rules['steadfast_webhook_token'] = ['nullable', 'string', 'min:16', 'max:100'];
         $rules['pathao_webhook_secret'] = ['nullable', 'string', 'min:16', 'max:100'];
         $rules['seo_og_image_remove'] = ['nullable', 'boolean'];
+        $rules['ai_provider'] = ['nullable', Rule::in(array_keys(AiClient::PROVIDERS))];
+        $rules['ai_fallback'] = ['nullable', Rule::in(['', ...array_keys(AiClient::PROVIDERS)])];
+        foreach (array_keys(AiClient::PROVIDERS) as $p) {
+            $rules["ai_{$p}_model"] = ['nullable', 'string', 'max:100', 'regex:/^[A-Za-z0-9._:\/-]+$/'];
+        }
+        $rules['ai_daily_limit'] = ['nullable', 'integer', 'min:0', 'max:100000'];
+        $rules['ai_writer_per_hour'] = ['nullable', 'integer', 'between:1,200'];
+        $rules['ai_assistant_name'] = ['nullable', 'string', 'max:60'];
+        $rules['ai_chat_greeting'] = ['nullable', 'string', 'max:300'];
 
         $data = $request->validate($rules, [
             'gtm_container_id.regex' => 'Use the container ID, e.g. GTM-ABC1234.',
@@ -165,6 +181,21 @@ class SettingController extends Controller
         }
 
         return response()->json(['ok' => true, 'message' => 'Sent. Check the phone.']);
+    }
+
+    public function testAi(Request $request, AiClient $ai)
+    {
+        $data = $request->validate(['provider' => ['required', Rule::in(array_keys(AiClient::PROVIDERS))]]);
+        if (blank(Setting::get("ai_{$data['provider']}_key"))) {
+            return response()->json(['ok' => false, 'message' => 'Save the API key first.'], 422);
+        }
+        try {
+            $reply = $ai->test($data['provider']);
+        } catch (AiException $e) {
+            return response()->json(['ok' => false, 'message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['ok' => true, 'message' => 'Connected. The AI replied: '.mb_substr($reply, 0, 60)]);
     }
 
     public function testEmail(Request $request)

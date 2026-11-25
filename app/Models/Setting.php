@@ -92,6 +92,22 @@ class Setting extends Model
         'emi_note' => '0% EMI on selected bank credit cards. Pay by card at checkout and ask your bank to convert it to EMI.',
         'default_locale' => 'en',        // en | bn
         'abandoned_cart_enabled' => '0',
+
+        // AI (Settings → AI). Keys are entered later; everything stays off until then.
+        'ai_provider' => 'gemini',
+        'ai_fallback' => 'groq',
+        'ai_gemini_key' => '',
+        'ai_gemini_model' => 'gemini-2.5-flash',
+        'ai_groq_key' => '',
+        'ai_groq_model' => 'openai/gpt-oss-120b',
+        'ai_openrouter_key' => '',
+        'ai_openrouter_model' => 'meta-llama/llama-3.3-70b-instruct:free',
+        'ai_daily_limit' => '500',
+        'ai_chat_enabled' => '0',
+        'ai_assistant_name' => '',
+        'ai_chat_greeting' => 'Hi! Looking for something? Tell me what you need and your budget, and I will suggest products from our shop. You can also ask about an order.',
+        'ai_writer_auto' => '0',
+        'ai_writer_per_hour' => '10',
         'abandoned_cart_delay_hours' => '2',
         'sms_template_abandoned_cart' => 'Hi {name}, you left items worth Tk {total} in your cart at {site}. Complete your order: {link}',
 
@@ -143,6 +159,7 @@ class Setting extends Model
         'steadfast_api_key', 'steadfast_secret_key',
         'pathao_client_secret', 'pathao_password',
         'sms_api_key', 'mail_password', 'bdcourier_api_key',
+        'ai_gemini_key', 'ai_groq_key', 'ai_openrouter_key',
     ];
 
     /** The only settings shared with every page (storefront and admin). */

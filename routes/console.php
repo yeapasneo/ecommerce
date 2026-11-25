@@ -18,6 +18,9 @@ Schedule::command('couriers:sync')->everyThirtyMinutes()->withoutOverlapping()->
 // One reminder for checkouts left unfinished (Settings → Notifications).
 Schedule::command('carts:remind')->hourly()->withoutOverlapping();
 
+// AI-written product texts for staff to review (only when turned on in Settings → AI).
+Schedule::command('ai:write-drafts')->hourly()->withoutOverlapping();
+
 // Nightly database backup (keeps 14).
 Schedule::command('app:backup')->dailyAt('02:30')->withoutOverlapping();
 

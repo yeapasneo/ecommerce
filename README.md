@@ -15,6 +15,7 @@ A full e-commerce store for computers, components and gadgets, with a complete a
 - **Product variants** such as size, colour or storage. Each option set has its own price, stock, SKU and photo, and the shopper picks the options on the product page.
 - **Flash sales** with a countdown on the home page and the product page. The sale price applies automatically between the start and end times.
 - **EMI prices**: a table of monthly instalments on the product page, built from the plans set in Settings → Payments.
+- **AI shopping assistant**: a chat button on every store page. It answers in Bangla or English, finds products using the shop's real prices and stock (it can only show products the search returned), helps with PC builds, and checks an order's status when given the order number and phone. Add-to-cart works from the chat.
 - **Bangla language option**: an English ⇄ বাংলা switch in the header. Translations are in `lang/bn.json`, and the default language is set in Settings → General.
 - **Product page:**
   - image gallery (up to 3 photos per imported product), key features, price and discount, stock status, product code, brand and warranty;
@@ -53,6 +54,8 @@ A full e-commerce store for computers, components and gadgets, with a complete a
 - **Sales Reports:** revenue, orders, average order, items sold, VAT, discounts, collected vs. still to collect, a daily chart, and the top products, categories, payment methods, order sources and cities, compared with the previous period. Orders and products can be exported to CSV that opens in Excel.
 - **Flash Sales:** pick products and sale prices for a time window.
 - **Abandoned Carts:** checkouts that were started but not finished. The shopper gets one reminder by SMS and/or email after a set delay, with a link that restores their cart. Carts are marked recovered when the shopper orders.
+- **AI Writer** (Products → AI Writer): writes descriptions, key features, SEO title and description, and Bangla versions from each product's specs. Best sellers with thin descriptions go first, in the background (or hourly when turned on). Staff compare old and new text, edit if needed, and publish. A **Write with AI** button on the product form fills the fields for one product.
+- **AI settings** (Settings → AI): Google Gemini (AI Studio), Groq or OpenRouter, all with free plans, plus a backup provider used when the main one is busy or out of quota. Keys are stored encrypted. A daily request limit protects the free quota, and every request is logged.
 - **Customers:** order count and total spent, block or unblock, and grant or remove admin (Owner only).
 - **Coupons, Banners and Sliders, Offers, Pages, PC Builder parts.**
 - **Moderation:** approve reviews, answer product questions, read contact messages and see newsletter subscribers.
@@ -180,6 +183,7 @@ php artisan test
 ```
 
 ## Notes
+- **AI:** nothing is sent to an AI provider until a key is saved in Settings → AI. Product details and shoppers' chat messages are sent to the chosen provider; free plans may use them to improve their models. The assistant never sends customer names or addresses, and order lookups need the order's phone number.
 - **Cache:** `CACHE_STORE=auto` uses Redis when the server has it (the PHP Redis extension or Predis, and a Redis server that answers), otherwise the file cache. The check is repeated every minute, and if Redis stops mid-way, reads and writes fall back to the file cache. Run `php artisan cache:driver` to see which cache is in use. Set `CACHE_STORE=redis`, `file` or `database` to force one.
 - All emails, including password resets, use the SMTP settings saved in Settings → Notifications. When none are saved, they fall back to the mail driver in `.env`.
 - Times use `APP_TIMEZONE` (Asia/Dhaka by default), so flash sale start and end times mean Bangladesh time.

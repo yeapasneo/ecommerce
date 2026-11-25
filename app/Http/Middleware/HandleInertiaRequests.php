@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Ai\ShopAssistant;
 use App\Models\Category;
 use App\Models\ContactMessage;
 use App\Models\Order;
@@ -33,6 +34,8 @@ class HandleInertiaRequests extends Middleware
             ],
             'settings' => fn () => Setting::public(),
             'locale' => app()->getLocale(),
+            'assistant' => fn () => ! $request->is('admin*') && ShopAssistant::enabled()
+                ? ['name' => ShopAssistant::name(), 'greeting' => Setting::get('ai_chat_greeting')] : null,
             'translations' => fn () => app()->getLocale() !== 'en' && ! $request->is('admin*')
                 ? Cache::rememberForever('translations:'.app()->getLocale().':'.@filemtime(lang_path(app()->getLocale().'.json')), fn () => json_decode((string) @file_get_contents(lang_path(app()->getLocale().'.json')), true) ?: [])
                 : [],

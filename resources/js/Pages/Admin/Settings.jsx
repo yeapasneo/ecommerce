@@ -13,6 +13,7 @@ const TABS = [
     { value: 'couriers', label: 'Couriers' },
     { value: 'notifications', label: 'Notifications' },
     { value: 'fraud', label: 'Fraud check' },
+    { value: 'ai', label: 'AI' },
 ];
 
 const PLACEHOLDERS = ['{name}', '{order}', '{total}', '{status}', '{courier}', '{tracking_url}', '{site}', '{phone}'];
@@ -53,6 +54,31 @@ function TestSend({ label, url, field, placeholder, type = 'text' }) {
             </div>
             {state && !state.loading && <p className={`mt-1 text-xs ${state.ok ? 'text-green-700' : 'text-red-600'}`} role="status">{state.message}</p>}
             {!state && <p className="mt-1 text-xs text-slate-500">Uses the saved settings. Save first.</p>}
+        </div>
+    );
+}
+
+/** "Test connection" for one AI provider (uses the saved key). */
+function TestAi({ provider }) {
+    const [state, setState] = useState(null);
+    const run = async () => {
+        setState({ loading: true });
+        try {
+            const res = await fetch('/admin/settings/test-ai', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-XSRF-TOKEN': decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] ?? '') },
+                body: JSON.stringify({ provider }),
+            });
+            const body = await res.json().catch(() => ({}));
+            setState({ ok: res.ok && body.ok, message: body.message || 'No answer.' });
+        } catch {
+            setState({ ok: false, message: 'Could not reach the server.' });
+        }
+    };
+    return (
+        <div>
+            <button type="button" onClick={run} disabled={state?.loading} className="btn-outline btn-sm">{state?.loading ? 'Testing…' : 'Test connection'}</button>
+            {state && !state.loading && <p className={`mt-1 text-xs ${state.ok ? 'text-green-700' : 'text-red-600'}`} role="status">{state.message}</p>}
         </div>
     );
 }
@@ -135,7 +161,7 @@ function TestConnection({ courier, onStores }) {
     );
 }
 
-export default function Settings({ values, secretsSet, gateways, couriers, notifications, urls, ogImageUrl }) {
+export default function Settings({ values, secretsSet, gateways, couriers, notifications, urls, ogImageUrl, ai }) {
     const [pathaoStores, setPathaoStores] = useState(null);
     const initial = useMemo(() => ({ ...values, seo_og_image: null, seo_og_image_remove: false }), [values]);
     const form = useForm(initial);
@@ -159,7 +185,7 @@ export default function Settings({ values, secretsSet, gateways, couriers, notif
         const keys = Object.keys(e);
         if (!keys.length) return;
         const k = keys[0];
-        const where = /^(fraud_|bdcourier)/.test(k) ? 'fraud' : /^(sms_|mail_|notify_|checkout_otp)/.test(k) ? 'notifications' : /^(steadfast|pathao|courier)_/.test(k) ? 'couriers' : /^(bkash|nagad|sslcommerz|eps|cod)_/.test(k) ? 'payments' : /^(seo_|google_|bing_|facebook_domain)/.test(k) ? 'seo' : /(pixel|gtm|ga_)/.test(k) ? 'tracking' : 'general';
+        const where = /^ai_/.test(k) ? 'ai' : /^(fraud_|bdcourier)/.test(k) ? 'fraud' : /^(sms_|mail_|notify_|checkout_otp)/.test(k) ? 'notifications' : /^(steadfast|pathao|courier)_/.test(k) ? 'couriers' : /^(bkash|nagad|sslcommerz|eps|cod)_/.test(k) ? 'payments' : /^(seo_|google_|bing_|facebook_domain)/.test(k) ? 'seo' : /(pixel|gtm|ga_)/.test(k) ? 'tracking' : 'general';
         setTab(where);
     }, [e]);
 
@@ -571,6 +597,69 @@ export default function Settings({ values, secretsSet, gateways, couriers, notif
                             </section>
                         </div>
                         <p className="flex items-start gap-2 text-sm text-slate-500"><Icon name="info" className="mt-0.5 h-4 w-4 shrink-0" /> Parcels are booked from each order's page (Orders → open an order → Courier). Test with sandbox or a single real parcel before shipping in bulk.</p>
+                    </div>
+                )}
+                {tab === 'ai' && (
+                    <div className="grid items-start gap-6 xl:grid-cols-[1fr_420px]">
+                        <div className="space-y-6">
+                            <Panel title="AI Provider" icon="sparkle" actions={<span className={`badge rounded-md ring-1 ring-inset ring-current/20 ${ai.ready ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}`}>{ai.ready ? 'Ready' : 'No key yet'}</span>}>
+                                <p className="-mt-2 mb-4 text-sm text-slate-500">All three have free plans. Get a key from the provider's site, paste it here and save. If the main provider is busy or out of free quota, the backup is used.</p>
+                                <div className="mb-5 grid gap-4 sm:grid-cols-2">
+                                    <div>
+                                        <label className="label" htmlFor="ai-provider">Main provider</label>
+                                        <select id="ai-provider" className="input" value={form.data.ai_provider ?? 'gemini'} onChange={set('ai_provider')}>
+                                            {Object.entries(ai.providers).map(([k, p]) => <option key={k} value={k}>{p.label}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="label" htmlFor="ai-fallback">Backup provider</label>
+                                        <select id="ai-fallback" className="input" value={form.data.ai_fallback ?? ''} onChange={set('ai_fallback')}>
+                                            <option value="">None</option>
+                                            {Object.entries(ai.providers).map(([k, p]) => <option key={k} value={k}>{p.label}</option>)}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="space-y-4">
+                                    {Object.entries(ai.providers).map(([k, p]) => (
+                                        <section key={k} className="rounded-xl border border-slate-200 p-4">
+                                            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                                                <p className="font-medium text-slate-900">{p.label}</p>
+                                                <a href={p.key_url} target="_blank" rel="noreferrer" className="text-xs font-medium text-primary-700 hover:underline">Get a free key ↗</a>
+                                            </div>
+                                            <div className="grid items-start gap-4 sm:grid-cols-2">
+                                                {secret(`ai_${k}_key`, 'API key')}
+                                                {text(`ai_${k}_model`, 'Model', { hint: k === 'gemini' ? 'e.g. gemini-2.5-flash' : k === 'groq' ? 'e.g. openai/gpt-oss-120b' : 'e.g. a model ending in :free' })}
+                                            </div>
+                                            {secretsSet[`ai_${k}_key`] && <div className="mt-3"><TestAi provider={k} /></div>}
+                                        </section>
+                                    ))}
+                                </div>
+                            </Panel>
+                        </div>
+                        <div className="space-y-6">
+                            <Panel title="Shopping Assistant" icon="chat">
+                                <div className="space-y-4">
+                                    {toggle('ai_chat_enabled', 'Show the chat assistant in the shop', 'A chat button on every store page. It answers in Bangla or English, suggests products using your real prices and stock, and checks order status.')}
+                                    {flag(form.data.ai_chat_enabled) && !ai.ready && <p className="text-xs text-amber-700">Add an API key above, or the chat button stays hidden.</p>}
+                                    {text('ai_assistant_name', 'Assistant name', { placeholder: `${form.data.site_name} Assistant` })}
+                                    <TextArea label="Greeting" rows={3} value={form.data.ai_chat_greeting ?? ''} onChange={set('ai_chat_greeting')} error={e.ai_chat_greeting} />
+                                </div>
+                            </Panel>
+                            <Panel title="AI Writer" icon="edit">
+                                <div className="space-y-4">
+                                    <p className="-mt-2 text-sm text-slate-500">Writes product descriptions, key features, SEO text and Bangla versions from each product's specs. Staff approve every text in <Link href="/admin/ai-writer" className="font-medium text-primary-700 hover:underline">Products → AI Writer</Link> before it goes live.</p>
+                                    {toggle('ai_writer_auto', 'Write drafts automatically every hour', 'Best-selling and most-viewed products with thin descriptions go first.')}
+                                    {text('ai_writer_per_hour', 'Products per hour', { type: 'number', min: 1, max: 200 })}
+                                </div>
+                            </Panel>
+                            <Panel title="Usage Limit" icon="shield">
+                                <div className="space-y-2">
+                                    {text('ai_daily_limit', 'Most AI requests per day', { type: 'number', min: 0, hint: 'Protects your free quota or bill. 0 means no limit. One chat answer can use 1–4 requests.' })}
+                                    <p className="text-xs text-slate-500">Used today: <b>{ai.usedToday}</b></p>
+                                </div>
+                            </Panel>
+                            <p className="flex items-start gap-2 text-sm text-slate-500"><Icon name="info" className="mt-0.5 h-4 w-4 shrink-0" /> Product details and shoppers' chat messages are sent to the AI provider. Free plans may use them to improve their models, so the assistant never sends customer names or addresses.</p>
+                        </div>
                     </div>
                 )}
             </form>
