@@ -1,5 +1,6 @@
 import { router, useForm } from '@inertiajs/react';
 import { AdminPagination, EmptyState, Tabs } from '../../Components/Admin/UI';
+import AiDraftButton from '../../Components/Admin/AiDraftButton';
 import Icon from '../../Components/Icon';
 import AdminLayout from '../../Layouts/AdminLayout';
 import { date } from '../../lib/format';
@@ -7,9 +8,12 @@ import { date } from '../../lib/format';
 function AnswerForm({ q }) {
     const form = useForm({ answer: q.answer ?? '' });
     return (
-        <form onSubmit={(e) => { e.preventDefault(); form.patch(`/admin/questions/${q.id}`, { preserveScroll: true }); }} className="mt-3 flex flex-col gap-2 sm:flex-row">
-            <input className="input" placeholder="Write an answer…" value={form.data.answer} onChange={(e) => form.setData('answer', e.target.value)} aria-label="Answer" />
-            <button disabled={form.processing || !form.data.answer.trim()} className="btn-primary shrink-0"><Icon name="check" className="h-4 w-4" /> {q.answer ? 'Update' : 'Answer'}</button>
+        <form onSubmit={(e) => { e.preventDefault(); form.patch(`/admin/questions/${q.id}`, { preserveScroll: true }); }} className="mt-3 space-y-2">
+            <textarea className="input min-h-[42px]" rows={form.data.answer.length > 90 ? 3 : 1} placeholder="Write an answer…" value={form.data.answer} onChange={(e) => form.setData('answer', e.target.value)} aria-label="Answer" />
+            <div className="flex flex-wrap items-center gap-2">
+                <button disabled={form.processing || !form.data.answer.trim()} className="btn-primary h-9 px-3"><Icon name="check" className="h-4 w-4" /> {q.answer ? 'Update answer' : 'Publish answer'}</button>
+                <AiDraftButton url={`/admin/ai/reply/question/${q.id}`} onDraft={(text) => form.setData('answer', text)} />
+            </div>
         </form>
     );
 }

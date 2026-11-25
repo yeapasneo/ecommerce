@@ -176,6 +176,9 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         Route::get('reviews', [Admin\ReviewController::class, 'index'])->name('reviews.index');
         Route::patch('reviews/{review}', [Admin\ReviewController::class, 'update'])->name('reviews.update');
         Route::delete('reviews/{review}', [Admin\ReviewController::class, 'destroy'])->name('reviews.destroy');
+        Route::put('reviews/{review}/reply', [Admin\ReviewController::class, 'reply'])->name('reviews.reply');
+        Route::post('messages/{message}/reply', [Admin\SettingController::class, 'replyMessage'])->name('messages.reply')->middleware('throttle:20,1');
+        Route::post('ai/reply/{type}/{id}', [Admin\AiController::class, 'reply'])->name('ai.reply')->whereIn('type', ['question', 'review', 'message'])->whereNumber('id')->middleware('throttle:30,1');
         Route::get('questions', [Admin\ReviewController::class, 'questions'])->name('questions.index');
         Route::patch('questions/{question}', [Admin\ReviewController::class, 'answer'])->name('questions.answer');
         Route::delete('questions/{question}', [Admin\ReviewController::class, 'destroyQuestion'])->name('questions.destroy');

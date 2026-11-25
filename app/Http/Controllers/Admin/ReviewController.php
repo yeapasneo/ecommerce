@@ -28,6 +28,15 @@ class ReviewController extends Controller
         return back()->with('success', 'Review updated.');
     }
 
+    /** The shop's public reply under a review (blank removes it). */
+    public function reply(Request $request, Review $review)
+    {
+        $reply = trim((string) $request->validate(['reply' => ['nullable', 'string', 'max:2000']])['reply']);
+        $review->update(['reply' => $reply ?: null, 'replied_at' => $reply ? now() : null]);
+
+        return back()->with('success', $reply ? 'Reply posted under the review.' : 'Reply removed.');
+    }
+
     public function destroy(Review $review)
     {
         $review->delete();

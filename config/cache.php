@@ -111,6 +111,22 @@ return [
 
         // Used by CACHE_STORE=auto when Redis is up: if Redis stops answering,
         // reads and writes fall through to the file cache instead of failing.
+        // Sessions with SESSION_DRIVER=auto (see AppServiceProvider): Redis, and the
+        // database if Redis stops answering.
+        'redis_sessions' => [
+            'driver' => 'redis',
+            'connection' => 'session',
+            'lock_connection' => 'session',
+        ],
+
+        'sessions_failover' => [
+            'driver' => 'failover',
+            'stores' => [
+                'redis_sessions',
+                'database',
+            ],
+        ],
+
         'redis_or_file' => [
             'driver' => 'failover',
             'stores' => [

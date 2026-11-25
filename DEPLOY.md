@@ -20,7 +20,7 @@ sudo systemctl restart php8.3-fpm
 php artisan cache:driver   # shows which cache is in use
 ```
 
-If Redis stops later, the shop keeps working on the file cache and switches back to Redis within a minute of it returning. Settings → System Status shows the cache in use. For a Redis server on another machine, set `REDIS_HOST`, `REDIS_PORT` and `REDIS_PASSWORD` in `.env`.
+Sessions follow the same rule (`SESSION_DRIVER=auto`: Redis, otherwise the database). If Redis stops later, the shop keeps working on the file cache and switches back to Redis within a minute of it returning. Settings → System Status shows the cache in use. For a Redis server on another machine, set `REDIS_HOST`, `REDIS_PORT` and `REDIS_PASSWORD` in `.env`.
 
 ## 2. Database
 

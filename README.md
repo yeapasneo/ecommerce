@@ -55,6 +55,7 @@ A full e-commerce store for computers, components and gadgets, with a complete a
 - **Flash Sales:** pick products and sale prices for a time window.
 - **Abandoned Carts:** checkouts that were started but not finished. The shopper gets one reminder by SMS and/or email after a set delay, with a link that restores their cart. Carts are marked recovered when the shopper orders.
 - **AI Writer** (Products → AI Writer): writes descriptions, key features, SEO title and description, and Bangla versions from each product's specs. Best sellers with thin descriptions go first, in the background (or hourly when turned on). Staff compare old and new text, edit if needed, and publish. A **Write with AI** button on the product form fills the fields for one product.
+- **Replies with AI:** "Draft with AI" on product questions (answered from the product's specs), review replies (shown under the review on the product page) and contact messages (the reply is emailed from the panel). Staff check and edit every draft before it's sent. Customer names, emails and phones aren't sent to the AI.
 - **AI settings** (Settings → AI): Google Gemini (AI Studio), Groq or OpenRouter, all with free plans, plus a backup provider used when the main one is busy or out of quota. Keys are stored encrypted. A daily request limit protects the free quota, and every request is logged.
 - **Customers:** order count and total spent, block or unblock, and grant or remove admin (Owner only).
 - **Coupons, Banners and Sliders, Offers, Pages, PC Builder parts.**
@@ -184,6 +185,7 @@ php artisan test
 
 ## Notes
 - **AI:** nothing is sent to an AI provider until a key is saved in Settings → AI. Product details and shoppers' chat messages are sent to the chosen provider; free plans may use them to improve their models. The assistant never sends customer names or addresses, and order lookups need the order's phone number.
+- **Sessions:** `SESSION_DRIVER=auto` keeps logins in Redis (its own database, so clearing the cache never logs anyone out) and falls back to the database the same way the cache does. When the shop switches between Redis and the database, signed-in users have to log in again once; guest carts are kept.
 - **Cache:** `CACHE_STORE=auto` uses Redis when the server has it (the PHP Redis extension or Predis, and a Redis server that answers), otherwise the file cache. The check is repeated every minute, and if Redis stops mid-way, reads and writes fall back to the file cache. Run `php artisan cache:driver` to see which cache is in use. Set `CACHE_STORE=redis`, `file` or `database` to force one.
 - All emails, including password resets, use the SMTP settings saved in Settings → Notifications. When none are saved, they fall back to the mail driver in `.env`.
 - Times use `APP_TIMEZONE` (Asia/Dhaka by default), so flash sale start and end times mean Bangladesh time.

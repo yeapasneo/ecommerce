@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Ai\AiClient;
 use App\Ai\ShopAssistant;
 use App\Models\Category;
 use App\Models\ContactMessage;
@@ -34,6 +35,7 @@ class HandleInertiaRequests extends Middleware
             ],
             'settings' => fn () => Setting::public(),
             'locale' => app()->getLocale(),
+            'aiReady' => fn () => $request->is('admin*') && $request->user()?->is_admin && app(AiClient::class)->isConfigured(),
             'assistant' => fn () => ! $request->is('admin*') && ShopAssistant::enabled()
                 ? ['name' => ShopAssistant::name(), 'greeting' => Setting::get('ai_chat_greeting')] : null,
             'translations' => fn () => app()->getLocale() !== 'en' && ! $request->is('admin*')

@@ -6,10 +6,14 @@ use App\Ai\AiClient;
 use App\Ai\AiException;
 use App\Ai\DraftQueue;
 use App\Ai\ProductWriter;
+use App\Ai\ReplyWriter;
 use App\Http\Controllers\Controller;
 use App\Models\AiDraft;
 use App\Models\AiLog;
+use App\Models\ContactMessage;
 use App\Models\Product;
+use App\Models\Question;
+use App\Models\Review;
 use App\Models\Setting;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -47,6 +51,22 @@ class AiController extends Controller
     {
         try {
             return response()->json(['fields' => $writer->write($product)]);
+        } catch (AiException $e) {
+            return response()->json(['message' => $e->getMessage()], $e->reason === 'not_configured' ? 409 : 422);
+        }
+    }
+
+    /** Draft a reply to a question, review or contact message (staff edit and send it). */
+    public function reply(string $type, int $id, ReplyWriter $writer)
+    {
+        $model = match ($type) {
+            'question' => Question::findOrFail($id),
+            'review' => Review::findOrFail($id),
+            'message' => ContactMessage::findOrFail($id),
+            default => abort(404),
+        };
+        try {
+            return response()->json(['reply' => $writer->{$type}($model)]);
         } catch (AiException $e) {
             return response()->json(['message' => $e->getMessage()], $e->reason === 'not_configured' ? 409 : 422);
         }

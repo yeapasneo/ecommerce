@@ -11,13 +11,17 @@ use App\Models\AiDraft;
 use App\Models\AiLog;
 use App\Models\Brand;
 use App\Models\Category;
+use App\Models\ContactMessage;
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\Question;
+use App\Models\Review;
 use App\Models\Setting;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -252,5 +256,56 @@ class AiTest extends TestCase
         Http::fake([self::GEMINI => Http::response([], 500), self::GROQ => Http::response([], 503)]);
         $this->postJson('/assistant', ['messages' => [['role' => 'user', 'content' => 'hi']]])->assertOk()->assertJsonPath('error', true);
         $this->postJson('/assistant', ['messages' => [['role' => 'assistant', 'content' => 'hi']]])->assertStatus(422);
+    }
+
+    // ── Reply drafts ─────────────────────────────────────────────────
+
+    public function test_reply_drafts_for_questions_reviews_and_messages(): void
+    {
+        $this->keys();
+        $customer = User::factory()->create();
+        $question = Question::create(['product_id' => $this->product->id, 'user_id' => $customer->id, 'question' => 'Does it have RTX 4060?']);
+        $review = Review::create(['product_id' => $this->product->id, 'user_id' => $customer->id, 'rating' => 2, 'comment' => 'Fan is loud', 'is_approved' => true]);
+        $message = ContactMessage::create(['name' => 'Karim Ahmed', 'email' => 'karim@example.com', 'phone' => '01799999999', 'subject' => 'Delivery', 'message' => 'How long to Sylhet?']);
+        Http::fakeSequence(self::GEMINI)
+            ->push(self::reply('Yes, it has an RTX 4060 8GB.'))
+            ->push(self::reply('"Sorry about the noise. Please call us."'))
+            ->push(self::reply("Hi {name},\nDelivery to Sylhet takes 2-3 days.\nThanks,\nTechNest Team"));
+
+        $this->actingAs($this->admin)->postJson("/admin/ai/reply/question/{$question->id}")->assertOk()->assertJsonPath('reply', 'Yes, it has an RTX 4060 8GB.');
+        $this->actingAs($this->admin)->postJson("/admin/ai/reply/review/{$review->id}")->assertOk()->assertJsonPath('reply', 'Sorry about the noise. Please call us.');
+        $this->actingAs($this->admin)->postJson("/admin/ai/reply/message/{$message->id}")->assertOk()->assertJsonPath('reply', "Hi Karim,\nDelivery to Sylhet takes 2-3 days.\nThanks,\nTechNest Team");
+
+        // The question draft used the product's specs; no customer contact details went to the AI.
+        Http::assertSent(fn (Request $r) => str_contains(json_encode($r['messages']), 'RTX 4060 8GB') && str_contains(json_encode($r['messages']), 'Does it have RTX 4060'));
+        Http::assertNotSent(fn (Request $r) => str_contains(json_encode($r['messages']), 'karim@example.com') || str_contains(json_encode($r['messages']), '01799999999') || str_contains(json_encode($r['messages']), 'Karim'));
+        $this->actingAs($this->admin)->postJson('/admin/ai/reply/order/1')->assertNotFound();
+    }
+
+    public function test_review_reply_shows_on_the_product_page(): void
+    {
+        $review = Review::create(['product_id' => $this->product->id, 'user_id' => User::factory()->create()->id, 'rating' => 5, 'comment' => 'Great', 'is_approved' => true]);
+        $this->actingAs($this->admin)->put("/admin/reviews/{$review->id}/reply", ['reply' => 'Thank you!'])->assertSessionHas('success');
+        auth()->logout();
+        $this->get('/product/asus-tuf-f15')->assertInertia(fn (Assert $p) => $p->where('reviews.0.reply', 'Thank you!'));
+
+        $this->actingAs($this->admin)->put("/admin/reviews/{$review->id}/reply", ['reply' => ''])->assertSessionHas('success');
+        $this->assertNull($review->fresh()->reply);
+    }
+
+    public function test_message_reply_is_emailed(): void
+    {
+        Mail::fake();
+        $message = ContactMessage::create(['name' => 'Karim', 'email' => 'karim@example.com', 'subject' => 'Delivery', 'message' => 'How long?']);
+        $this->actingAs($this->admin)->post("/admin/messages/{$message->id}/reply", ['reply' => 'Hi Karim, 2-3 days.'])->assertSessionHas('success');
+        $message->refresh();
+        $this->assertSame(['Hi Karim, 2-3 days.', true, $this->admin->id], [$message->reply, $message->is_read, $message->replied_by]);
+    }
+
+    public function test_engagement_permission_is_needed_for_reply_drafts(): void
+    {
+        $catalog = User::factory()->create(['is_admin' => true, 'role' => 'catalog']);
+        $q = Question::create(['product_id' => $this->product->id, 'user_id' => $catalog->id, 'question' => 'x?']);
+        $this->actingAs($catalog)->postJson("/admin/ai/reply/question/{$q->id}")->assertForbidden();
     }
 }

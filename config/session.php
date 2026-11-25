@@ -18,7 +18,7 @@ return [
     |
     */
 
-    'driver' => env('SESSION_DRIVER', 'database'),
+    'driver' => env('SESSION_DRIVER', 'auto'), // auto: Redis when available, otherwise the database
 
     /*
     |--------------------------------------------------------------------------

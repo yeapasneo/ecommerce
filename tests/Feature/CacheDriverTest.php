@@ -63,4 +63,15 @@ class CacheDriverTest extends TestCase
         $cache->put('greeting', 'hello', 60);
         $this->assertSame('hello', $cache->get('greeting'));
     }
+
+    public function test_session_driver_falls_back_to_the_database_when_redis_stops(): void
+    {
+        config([
+            'database.redis.session.port' => 1, 'database.redis.session.timeout' => 0.2, 'database.redis.session.max_retries' => 0,
+            'cache.stores.database.connection' => null,
+        ]);
+        $handler = app('session')->driver('redis_or_database')->getHandler();
+        $handler->write('abc123', 'payload');
+        $this->assertSame('payload', $handler->read('abc123'));
+    }
 }

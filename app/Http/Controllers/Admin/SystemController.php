@@ -89,6 +89,10 @@ class SystemController extends Controller
         $add('Store', 'Cache', $redis ? 'ok' : 'warn',
             $redis ? 'Using Redis (falls back to the file cache if Redis stops).' : 'Using the '.($store === 'file' ? 'file' : $store).' cache. Redis is '.(CacheDriver::hasClient() ? 'not running.' : 'not installed.'),
             'Install Redis and the PHP Redis extension (sudo apt install redis-server php-redis) and keep CACHE_STORE=auto. The shop switches to Redis within a minute.');
+        $session = config('session.driver');
+        $add('Store', 'Sessions', $session === 'redis_or_database' || $session === 'redis' ? 'ok' : 'warn',
+            $session === 'redis_or_database' ? 'Stored in Redis (fall back to the database if Redis stops).' : "Stored in: {$session}.",
+            'Install Redis (see Cache above) and keep SESSION_DRIVER=auto. Switching logs signed-in users out once.');
         $add('Store', 'Optimized config', app()->configurationIsCached() ? 'ok' : 'warn',
             app()->configurationIsCached() ? 'Config and routes are cached.' : 'Not cached (fine while developing).', 'Run php artisan optimize after each deploy.');
 

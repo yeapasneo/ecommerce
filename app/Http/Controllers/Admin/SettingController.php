@@ -221,6 +221,26 @@ class SettingController extends Controller
         ]);
     }
 
+    /** Email a reply to a contact-form message. */
+    public function replyMessage(Request $request, ContactMessage $message)
+    {
+        $data = $request->validate(['reply' => ['required', 'string', 'max:5000']]);
+        if (! $message->email) {
+            return back()->with('error', 'This message has no email address. Call the customer instead.');
+        }
+        try {
+            MailConfig::apply();
+            Mail::raw($data['reply'], fn ($m) => $m->to($message->email, $message->name)->subject('Re: '.$message->subject));
+        } catch (\Throwable $e) {
+            return back()->with('error', 'Could not send the email: '.$e->getMessage());
+        }
+        $message->update(['reply' => $data['reply'], 'replied_at' => now(), 'replied_by' => $request->user()->id, 'is_read' => true]);
+
+        return back()->with('success', in_array(config('mail.default'), ['log', 'array'], true)
+            ? 'Saved, but no mail server is set up, so the email was only written to the log (Settings → Notifications).'
+            : "Reply emailed to {$message->email}.");
+    }
+
     public function readMessage(ContactMessage $message)
     {
         $message->update(['is_read' => true]);

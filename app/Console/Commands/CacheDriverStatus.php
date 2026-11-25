@@ -10,7 +10,7 @@ class CacheDriverStatus extends Command
 {
     protected $signature = 'cache:driver';
 
-    protected $description = 'Show the cache store in use (CACHE_STORE=auto picks Redis when available, otherwise file) and re-check Redis';
+    protected $description = 'Show the cache and session stores in use (CACHE_STORE=auto picks Redis when available, otherwise file) and re-check Redis';
 
     public function handle(): int
     {
@@ -27,6 +27,13 @@ class CacheDriverStatus extends Command
             $this->line('In use: <info>'.($store === 'redis' ? 'Redis (falls back to file if Redis stops)' : 'File cache').'</info>');
         } else {
             $this->line("In use: <info>{$configured}</info> (set CACHE_STORE=auto to choose automatically)");
+        }
+
+        $session = env('SESSION_DRIVER', 'auto');
+        if ($session === 'auto') {
+            $this->line('Sessions: <info>'.(CacheDriver::resolve(config('database.redis', []), CacheDriver::stateFile()) === 'redis' ? 'Redis (falls back to the database if Redis stops)' : 'Database').'</info>');
+        } else {
+            $this->line("Sessions: <info>{$session}</info> (set SESSION_DRIVER=auto to choose automatically)");
         }
 
         return self::SUCCESS;

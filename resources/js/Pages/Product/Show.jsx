@@ -85,7 +85,7 @@ function EmiBox({ emi }) {
 }
 
 export default function Show({ product, breadcrumbs, specGroups, reviews, rating, questions, related, inWishlist, inCompare, hasReviewed, variants = [], flash = null, emi = null }) {
-    const { auth } = usePage().props;
+    const { auth, settings } = usePage().props;
     const [qty, setQty] = useState(1);
     const [tab, setTab] = useState('specification');
 
@@ -269,6 +269,12 @@ export default function Show({ product, breadcrumbs, specGroups, reviews, rating
                                     <div key={r.id} className="border-b border-slate-100 pb-3 text-sm">
                                         <div className="flex items-center gap-2"><Stars value={r.rating} /> <b>{r.user?.name}</b> <span className="text-xs text-slate-400">{date(r.created_at)}</span></div>
                                         <p className="mt-1 text-slate-700">{r.comment}</p>
+                                        {r.reply && (
+                                            <div className="mt-2 rounded-md border-l-2 border-accent-500 bg-slate-50 px-3 py-2 text-sm">
+                                                <p className="text-xs font-semibold text-slate-700">{t('Reply from')} {settings.site_name}</p>
+                                                <p className="mt-0.5 whitespace-pre-line text-slate-600">{r.reply}</p>
+                                            </div>
+                                        )}
                                     </div>
                                 ))}
                                 {reviews.length === 0 && <p className="text-sm text-slate-500">{t('No reviews yet. Be the first to review this product.')}</p>}
