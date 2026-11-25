@@ -20,6 +20,11 @@ const nav = [
         ['/admin/blocked-phones', 'shield', 'Blocked Numbers', null, 'orders'],
         ['/admin/reports', 'dashboard', 'Reports', null, 'reports'],
     ]],
+    ['Inventory', [
+        ['/admin/inventory', 'box', 'Stock & Low Stock', null, 'catalog'],
+        ['/admin/purchase-orders', 'truck', 'Purchase Orders', null, 'catalog'],
+        ['/admin/suppliers', 'users', 'Suppliers', null, 'catalog'],
+    ]],
     ['Marketing', [
         ['/admin/flash-sales', 'gift', 'Flash Sales', null, 'marketing'],
         ['/admin/coupons', 'percent', 'Coupons', null, 'marketing'],

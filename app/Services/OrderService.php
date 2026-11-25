@@ -25,7 +25,7 @@ class OrderService
         $order = DB::transaction(function () use ($lines, $build, $options) {
             [$subtotal, $items] = $this->reserve($lines, $options['error_key'] ?? 'cart');
             $order = Order::create($build($subtotal) + ['order_number' => Order::generateNumber()]);
-            $this->writeItems($order, $items);
+            Stock::as('sale', $order, fn () => $this->writeItems($order, $items));
             $order->histories()->create(['status' => $order->status, 'comment' => $options['history'] ?? 'Order placed.']);
             if (isset($options['after'])) {
                 $options['after']($order);
@@ -47,12 +47,12 @@ class OrderService
         return DB::transaction(function () use ($order, $lines, $build, $comment) {
             $order = Order::lockForUpdate()->with('items')->findOrFail($order->id);
             $before = (float) $order->total;
-            $this->restock($order);
+            Stock::as('order_edit', $order, fn () => $this->restock($order));
             $order->items()->delete();
 
             [$subtotal, $items] = $this->reserve($lines, 'items');
             $order->update($build($subtotal));
-            $this->writeItems($order, $items);
+            Stock::as('order_edit', $order, fn () => $this->writeItems($order, $items));
 
             $change = $before !== (float) $order->total ? ' Total ৳'.number_format($before).' → ৳'.number_format((float) $order->total).'.' : '';
             $order->histories()->create(['status' => $order->status, 'comment' => $comment.$change]);
@@ -155,7 +155,7 @@ class OrderService
 
         DB::transaction(function () use ($order, $status, $comment) {
             if ($status === 'cancelled' && $order->status !== 'cancelled') {
-                $this->restock($order);
+                Stock::as('cancel', $order, fn () => $this->restock($order));
             }
             $updates = ['status' => $status];
             if ($status === 'delivered' && $order->payment_method === 'cod') {

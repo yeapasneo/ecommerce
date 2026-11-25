@@ -154,6 +154,14 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         Route::resource('brands', Admin\BrandController::class)->only('index', 'store', 'update', 'destroy');
         Route::resource('pc-components', Admin\PcComponentController::class)->only('index', 'store', 'update', 'destroy');
 
+        // Inventory: low stock, stock history, suppliers and purchase orders.
+        Route::get('inventory', [Admin\InventoryController::class, 'index'])->name('inventory.index');
+        Route::post('inventory/adjust', [Admin\InventoryController::class, 'adjust'])->name('inventory.adjust');
+        Route::resource('suppliers', Admin\SupplierController::class)->only('index', 'store', 'update', 'destroy');
+        Route::resource('purchase-orders', Admin\PurchaseOrderController::class);
+        Route::post('purchase-orders/{purchase_order}/status', [Admin\PurchaseOrderController::class, 'status'])->name('purchase-orders.status');
+        Route::post('purchase-orders/{purchase_order}/receive', [Admin\PurchaseOrderController::class, 'receive'])->name('purchase-orders.receive');
+
         // AI Writer: product texts written by AI and approved by staff.
         Route::get('ai-writer', [Admin\AiController::class, 'index'])->name('ai.index');
         Route::post('ai-writer/queue', [Admin\AiController::class, 'queue'])->name('ai.queue');

@@ -48,18 +48,18 @@ class ProductController extends Controller
             ->orderByRaw("case when stock_status = 'in_stock' then 0 else 1 end")
             ->orderBy('name')->take(12)
             ->with(['variants' => fn ($q) => $q->where('is_active', true)])
-            ->get(['id', 'name', 'sku', 'price', 'stock', 'stock_status', 'image', 'is_active', 'has_variants']);
+            ->get(['id', 'name', 'sku', 'price', 'cost_price', 'stock', 'stock_status', 'image', 'is_active', 'has_variants']);
 
         // Products with options are listed once per option, so staff pick the exact one.
         return response()->json($products->flatMap(fn ($p) => $p->has_variants && $p->variants->isNotEmpty()
             ? $p->variants->map(fn ($v) => [
                 'id' => $p->id, 'variant_id' => $v->id, 'name' => $p->name, 'variant_name' => $v->name, 'sku' => $v->sku ?: $p->sku,
-                'price' => $v->basePrice(), 'stock' => $v->stock, 'stock_status' => $v->stock > 0 ? 'in_stock' : 'out_of_stock',
+                'price' => $v->basePrice(), 'cost_price' => $v->cost_price ?? $p->cost_price, 'stock' => $v->stock, 'stock_status' => $v->stock > 0 ? 'in_stock' : 'out_of_stock',
                 'stock_label' => $v->stock > 0 ? 'In Stock' : 'Out of Stock', 'image_url' => $v->image_url ?: $p->image_url,
                 'purchasable' => $v->stock > 0 || $p->stock_status === 'pre_order',
             ])
             : [[
-                'id' => $p->id, 'variant_id' => null, 'name' => $p->name, 'variant_name' => null, 'sku' => $p->sku, 'price' => (float) $p->price,
+                'id' => $p->id, 'variant_id' => null, 'name' => $p->name, 'variant_name' => null, 'sku' => $p->sku, 'price' => (float) $p->price, 'cost_price' => $p->cost_price,
                 'stock' => $p->stock, 'stock_status' => $p->stock_status, 'stock_label' => $p->stock_label,
                 'image_url' => $p->image_url, 'purchasable' => $p->isPurchasable(),
             ]])->take(20)->values());

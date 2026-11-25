@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\LogsActivity;
+use App\Services\Stock;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -50,5 +51,12 @@ class ProductVariant extends Model
     public function isPurchasable(): bool
     {
         return $this->is_active && ($this->stock > 0 || $this->product?->stock_status === 'pre_order');
+    }
+
+    protected static function booted(): void
+    {
+        // Stock history (see App\Services\Stock).
+        static::created(fn (self $m) => Stock::watch($m, true));
+        static::updated(fn (self $m) => Stock::watch($m));
     }
 }

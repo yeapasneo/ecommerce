@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\LogsActivity;
+use App\Services\Stock;
 use App\Support\FlashSales;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -169,5 +170,12 @@ class Product extends Model
             'has_variants' => (bool) ($this->attributes['has_variants'] ?? false),
             'flash_ends_at' => $this->flashSale()['ends_at'] ?? null,
         ];
+    }
+
+    protected static function booted(): void
+    {
+        // Stock history (see App\Services\Stock).
+        static::created(fn (self $m) => Stock::watch($m, true));
+        static::updated(fn (self $m) => Stock::watch($m));
     }
 }

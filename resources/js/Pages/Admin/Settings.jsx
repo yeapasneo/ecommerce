@@ -229,6 +229,13 @@ export default function Settings({ values, secretsSet, gateways, couriers, notif
                             </div>
                         </Panel>
                         <div className="space-y-6">
+                            <Panel title="Low Stock" icon="box">
+                                <div className="space-y-4">
+                                    {text('low_stock_threshold', 'Low stock at or below', { type: 'number', min: 0, hint: 'Products with this many units or fewer show in Inventory → Low stock.' })}
+                                    {toggle('low_stock_alerts', 'Email a low-stock list every morning', 'Sent at 8:15 when anything is running low.')}
+                                    {flag(form.data.low_stock_alerts) && text('low_stock_email', 'Send it to', { type: 'email', placeholder: form.data.notify_admin_email || 'you@example.com', hint: 'Leave blank to use the new-order alert email.' })}
+                                </div>
+                            </Panel>
                             <Panel title="Delivery Charges" icon="truck">
                                 <div className="grid gap-4 sm:grid-cols-2">
                                     {text('delivery_charge_inside', 'Inside Dhaka (৳)', { type: 'number' })}

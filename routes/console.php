@@ -18,6 +18,9 @@ Schedule::command('couriers:sync')->everyThirtyMinutes()->withoutOverlapping()->
 // One reminder for checkouts left unfinished (Settings → Notifications).
 Schedule::command('carts:remind')->hourly()->withoutOverlapping();
 
+// Morning email listing products that are running low (Settings → General).
+Schedule::command('stock:low-alert')->dailyAt('08:15')->withoutOverlapping();
+
 // AI-written product texts for staff to review (only when turned on in Settings → AI).
 Schedule::command('ai:write-drafts')->hourly()->withoutOverlapping();
 

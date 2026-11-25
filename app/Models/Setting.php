@@ -93,6 +93,11 @@ class Setting extends Model
         'default_locale' => 'en',        // en | bn
         'abandoned_cart_enabled' => '0',
 
+        // Inventory
+        'low_stock_threshold' => '3',
+        'low_stock_alerts' => '0',
+        'low_stock_email' => '',
+
         // AI (Settings → AI). Keys are entered later; everything stays off until then.
         'ai_provider' => 'gemini',
         'ai_fallback' => 'groq',
