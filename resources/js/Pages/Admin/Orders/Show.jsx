@@ -153,6 +153,8 @@ export default function Show({ order, statuses, paymentStatuses, paymentMethods,
                                 <dt>Sub-total</dt><dd className="text-right">{money(order.subtotal)}</dd>
                                 <dt>Delivery</dt><dd className="text-right">{money(order.delivery_charge)}</dd>
                                 {order.discount > 0 && <><dt>Discount</dt><dd className="text-right text-green-700">-{money(order.discount)}</dd></>}
+                                {order.points_discount > 0 && <><dt>Points used ({order.points_redeemed})</dt><dd className="text-right text-green-700">-{money(order.points_discount)}</dd></>}
+                                {order.points_earned > 0 && <><dt>Points earned</dt><dd className="text-right">+{order.points_earned}</dd></>}
                                 {order.tax > 0 && <><dt>VAT / Tax</dt><dd className="text-right">{money(order.tax)}</dd></>}
                                 {order.paid_amount > 0 && order.payment_status !== 'paid' && <><dt>Paid</dt><dd className="text-right">{money(order.paid_amount)}</dd></>}
                                 {order.due_amount > 0 && order.payment_status !== 'unpaid' && <><dt className="font-semibold text-slate-900">Due</dt><dd className="text-right font-semibold text-red-600">{money(order.due_amount)}</dd></>}

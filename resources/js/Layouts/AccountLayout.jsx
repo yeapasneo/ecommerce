@@ -9,6 +9,7 @@ const links = [
     ['/account', 'dashboard', 'Dashboard'],
     ['/account/orders', 'receipt', 'Orders'],
     ['/account/returns', 'refresh', 'Returns & Warranty'],
+    ['/account/points', 'gift', 'Points & Referrals'],
     ['/account/wishlist', 'heart', 'Wishlist'],
     ['/account/saved-pcs', 'cpu', 'Saved PCs'],
     ['/account/profile', 'user', 'Edit Profile'],
@@ -28,7 +29,7 @@ export default function AccountLayout({ title, children }) {
                             <p className="font-semibold">{props.auth.user.name}</p>
                         </div>
                         <nav className="flex overflow-x-auto lg:block">
-                            {links.map(([href, icon, label]) => {
+                            {links.filter(([href]) => href !== '/account/points' || props.settings?.loyalty_enabled === '1' || props.settings?.referral_enabled === '1').map(([href, icon, label]) => {
                                 const active = href === '/account' ? url === '/account' : url.startsWith(href);
                                 return (
                                     <Link key={href} href={href} className={`flex shrink-0 items-center gap-3 border-b border-slate-100 px-4 py-3 text-sm ${active ? 'bg-brand-50 font-semibold text-brand-700' : 'hover:bg-slate-50'}`}>

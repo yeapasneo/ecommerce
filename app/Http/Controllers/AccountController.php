@@ -3,9 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
+use App\Models\PointTransaction;
 use App\Models\ReturnRequest;
 use App\Models\Setting;
+use App\Models\User;
 use App\Models\Wishlist;
+use App\Services\Loyalty;
 use App\Services\OrderService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -117,5 +120,30 @@ class AccountController extends Controller
     public function savedPcs(Request $request)
     {
         return Inertia::render('Account/SavedPcs', ['savedPcs' => $request->user()->savedPcs()->latest()->get()]);
+    }
+
+    /** Loyalty points balance, history and the customer's referral link. */
+    public function points(Request $request)
+    {
+        abort_unless(Loyalty::enabled() || Setting::enabled('referral_enabled'), 404);
+        $user = $request->user()->fresh();
+
+        return Inertia::render('Account/Points', [
+            'balance' => (int) $user->points,
+            'value' => Loyalty::pointValue(),
+            'earnPer' => Loyalty::earnPer(),
+            'minRedeem' => (int) Setting::get('loyalty_min_redeem', 100),
+            'maxPercent' => (int) Setting::get('loyalty_max_percent', 20),
+            'loyalty' => Loyalty::enabled(),
+            'history' => $user->pointTransactions()->with('order:id,order_number')->take(50)->get(),
+            'types' => PointTransaction::TYPES,
+            'referral' => Setting::enabled('referral_enabled') ? [
+                'link' => url('/?ref='.$user->referralCode()),
+                'code' => $user->referralCode(),
+                'bonus' => (int) Setting::get('referral_bonus', 200),
+                'welcome' => (int) Setting::get('referral_welcome', 100),
+                'invited' => User::where('referred_by', $user->id)->count(),
+            ] : null,
+        ]);
     }
 }

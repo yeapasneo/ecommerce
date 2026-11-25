@@ -1,4 +1,4 @@
-import { Link, router, usePage } from '@inertiajs/react';
+import { Link, router, useForm, usePage } from '@inertiajs/react';
 import { EmptyState, Panel, Toggle } from '../../../Components/Admin/UI';
 import Icon from '../../../Components/Icon';
 import AdminLayout from '../../../Layouts/AdminLayout';
@@ -13,7 +13,31 @@ function ContactRow({ icon, children }) {
     );
 }
 
-export default function Show({ customer, orders }) {
+function PointsPanel({ customer, points, pointTypes, referredBy }) {
+    const form = useForm({ points: '', note: '' });
+    return (
+        <Panel title="Loyalty Points" actions={<span className="rounded-full bg-primary-50 px-2.5 py-0.5 text-sm font-semibold text-primary-700">{customer.points}</span>}>
+            {referredBy && <p className="mb-3 text-sm text-slate-500">Invited by <Link href={`/admin/customers/${referredBy.id}`} className="text-primary-700 hover:underline">{referredBy.name}</Link></p>}
+            <form onSubmit={(e) => { e.preventDefault(); form.post(`/admin/customers/${customer.id}/points`, { preserveScroll: true, onSuccess: () => form.reset() }); }} className="mb-4 grid grid-cols-[110px_1fr_auto] gap-2">
+                <input className="input" type="number" value={form.data.points} onChange={(e) => form.setData('points', e.target.value)} placeholder="+50 / −20" aria-label="Points" />
+                <input className="input" value={form.data.note} onChange={(e) => form.setData('note', e.target.value)} placeholder="Reason" aria-label="Reason" />
+                <button disabled={form.processing || !form.data.points} className="btn-primary">Save</button>
+                {(form.errors.points || form.errors.note) && <p className="col-span-3 text-xs text-red-600">{form.errors.points || form.errors.note}</p>}
+            </form>
+            <ul className="divide-y divide-slate-100 text-sm">
+                {points.length === 0 && <li className="py-2 text-slate-500">No points yet.</li>}
+                {points.map((p) => (
+                    <li key={p.id} className="flex items-center justify-between gap-2 py-1.5">
+                        <span className="min-w-0 truncate">{pointTypes[p.type] ?? p.type}{p.order ? ` · #${p.order.order_number}` : p.note ? ` · ${p.note}` : ''}<span className="block text-xs text-slate-500">{date(p.created_at)}</span></span>
+                        <span className={`shrink-0 font-semibold ${p.points > 0 ? 'text-green-700' : 'text-red-600'}`}>{p.points > 0 ? `+${p.points}` : p.points}</span>
+                    </li>
+                ))}
+            </ul>
+        </Panel>
+    );
+}
+
+export default function Show({ customer, orders, points = null, pointTypes = {}, referredBy = null }) {
     const { auth } = usePage().props;
     const self = auth.user.id === customer.id;
     const update = (data) => router.put(`/admin/customers/${customer.id}`, { is_active: customer.is_active, is_admin: customer.is_admin, ...data }, { preserveScroll: true });
@@ -69,6 +93,8 @@ export default function Show({ customer, orders }) {
                             {customer.address && <ContactRow icon="pin">{customer.address}{customer.city && `, ${customer.city}`}</ContactRow>}
                         </div>
                     </Panel>
+
+                    {points && <PointsPanel customer={customer} points={points} pointTypes={pointTypes} referredBy={referredBy} />}
 
                     <Panel title="Account Access">
                         {self ? (

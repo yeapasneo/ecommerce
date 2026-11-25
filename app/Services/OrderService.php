@@ -164,6 +164,12 @@ class OrderService
             }
             $order->update($updates);
             $order->histories()->create(['status' => $status, 'comment' => $comment]);
+            // Loyalty points: earned on delivery, given back on cancellation.
+            match ($status) {
+                'delivered' => app(Loyalty::class)->delivered($order),
+                'cancelled' => app(Loyalty::class)->cancelled($order),
+                default => null,
+            };
         });
 
         $this->notifier->statusChanged($order, $status);

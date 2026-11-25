@@ -4,8 +4,11 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Order;
+use App\Models\PointTransaction;
 use App\Models\User;
 use App\Services\FraudCheck;
+use App\Services\Loyalty;
+use App\Support\Activity;
 use App\Support\Phone;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -28,7 +31,21 @@ class CustomerController extends Controller
         return Inertia::render('Admin/Customers/Show', [
             'customer' => $user,
             'orders' => $user->orders()->latest()->get(),
+            'points' => Loyalty::enabled() ? $user->pointTransactions()->with('order:id,order_number')->take(20)->get() : null,
+            'pointTypes' => PointTransaction::TYPES,
+            'referredBy' => $user->referred_by ? User::find($user->referred_by, ['id', 'name']) : null,
         ]);
+    }
+
+    /** Add or remove loyalty points by hand (goodwill, corrections). */
+    public function points(Request $request, User $user, Loyalty $loyalty)
+    {
+        $data = $request->validate(['points' => ['required', 'integer', 'not_in:0', 'between:-100000,100000'], 'note' => ['required', 'string', 'max:200']],
+            ['note.required' => 'Say why, for the customer\'s points history.']);
+        $loyalty->add($user, $data['points'], 'adjust', null, $data['note'], $request->user()->id);
+        Activity::log('updated', $user, ($data['points'] > 0 ? 'Added ' : 'Removed ').abs($data['points'])." points for {$user->name}: {$data['note']}");
+
+        return back()->with('success', 'Points updated.');
     }
 
     public function update(Request $request, User $user)

@@ -11,6 +11,7 @@ use App\Models\Setting;
 use App\Payments\PaymentManager;
 use App\Services\AbandonedCarts;
 use App\Services\CartService;
+use App\Services\Loyalty;
 use App\Services\OrderService;
 use App\Support\Analytics;
 use App\Support\Phone;
@@ -56,6 +57,13 @@ class CheckoutController extends Controller
             ],
             'initialDelivery' => CartService::deliveryCharge('home_delivery', $user?->city ?? 'Dhaka', $summary['subtotal']),
             'deliveryMethods' => Order::DELIVERY_METHODS,
+            'loyalty' => Loyalty::enabled() ? [
+                'balance' => (int) $user?->fresh()->points,
+                'redeemable' => Loyalty::redeemable($user?->fresh(), $summary['subtotal'] - $summary['discount']),
+                'value' => Loyalty::pointValue(),
+                'min' => (int) Setting::get('loyalty_min_redeem', 100),
+                'earnPer' => Loyalty::earnPer(),
+            ] : null,
             'defaults' => [
                 'first_name' => $user ? explode(' ', $user->name, 2)[0] : '',
                 'last_name' => $user ? (explode(' ', $user->name, 2)[1] ?? '') : '',
@@ -94,6 +102,7 @@ class CheckoutController extends Controller
             'delivery_method' => ['required', Rule::in(array_keys(Order::DELIVERY_METHODS))],
             'payment_method' => ['required', Rule::in(array_keys($this->payments->checkoutMethods()))],
             'agree' => ['accepted'],
+            'use_points' => ['nullable', 'boolean'],
         ], ['agree.accepted' => 'You must agree to the terms and conditions.']);
 
         $this->guardPhone($data);
@@ -110,23 +119,29 @@ class CheckoutController extends Controller
                 $coupon = $this->cart->appliedCoupon($subtotal);
                 $discount = $coupon ? $coupon->discountFor($subtotal) : 0;
                 $delivery = CartService::deliveryCharge($data['delivery_method'], $data['city'], $subtotal);
+                // Loyalty points pay part of the items (checked again here, at the real subtotal).
+                $points = ! empty($data['use_points']) ? Loyalty::redeemable(auth()->user()?->fresh(), $subtotal - $discount) : 0;
+                $pointsDiscount = round($points * Loyalty::pointValue(), 2);
 
-                return collect($data)->except('agree')->all() + [
+                return collect($data)->except('agree', 'use_points')->all() + [
+                    'points_redeemed' => $points,
+                    'points_discount' => $pointsDiscount,
                     'user_id' => auth()->id(),
                     'subtotal' => $subtotal,
                     'delivery_charge' => $delivery,
                     'discount' => $discount,
-                    'total' => $subtotal - $discount + $delivery,
+                    'total' => $subtotal - $discount - $pointsDiscount + $delivery,
                     'coupon_code' => $coupon?->code,
                     'status' => 'pending',
                     'payment_status' => 'unpaid',
                     'source' => 'website',
                 ];
             },
-            ['after' => function () use (&$coupon) {
+            ['after' => function ($order) use (&$coupon) {
                 if ($coupon) {
                     Coupon::whereKey($coupon->id)->increment('used');
                 }
+                app(Loyalty::class)->redeem($order);
             }],
         );
 
@@ -217,7 +232,7 @@ class CheckoutController extends Controller
         $awaitingPayment = $this->payments->isGateway($order->payment_method) && ! $order->isPaid() && $order->status !== 'cancelled';
 
         return Inertia::render('OrderSuccess', [
-            'order' => $order->only('id', 'order_number', 'first_name', 'last_name', 'phone', 'email', 'address', 'city', 'subtotal', 'delivery_charge', 'discount', 'tax', 'total', 'paid_amount', 'due_amount', 'coupon_code', 'payment_method', 'payment_status', 'delivery_method', 'status', 'transaction_id', 'paid_at', 'created_at', 'items'),
+            'order' => $order->only('id', 'order_number', 'first_name', 'last_name', 'phone', 'email', 'address', 'city', 'subtotal', 'delivery_charge', 'discount', 'tax', 'points_discount', 'points_redeemed', 'total', 'paid_amount', 'due_amount', 'coupon_code', 'payment_method', 'payment_status', 'delivery_method', 'status', 'transaction_id', 'paid_at', 'created_at', 'items'),
             'paymentMethods' => Order::PAYMENT_METHODS,
             'deliveryMethods' => Order::DELIVERY_METHODS,
             'paymentResult' => $request->hasValidSignature() ? $request->query('payment') : null,

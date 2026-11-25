@@ -49,6 +49,7 @@ export default function Invoice({ order, paymentMethods, deliveryMethods }) {
                     <div className="flex justify-between"><span>Sub-Total</span><span>{money(order.subtotal)}</span></div>
                     <div className="flex justify-between"><span>Delivery</span><span>{money(order.delivery_charge)}</span></div>
                     {order.discount > 0 && <div className="flex justify-between"><span>Discount</span><span>-{money(order.discount)}</span></div>}
+                    {order.points_discount > 0 && <div className="flex justify-between"><span>Points used</span><span>-{money(order.points_discount)}</span></div>}
                     {order.tax > 0 && <div className="flex justify-between"><span>VAT / Tax</span><span>{money(order.tax)}</span></div>}
                     <div className="flex justify-between border-t border-slate-300 pt-1 text-base font-bold"><span>Total</span><span>{money(order.total)}</span></div>
                     {order.payment_status === 'partial' && <div className="flex justify-between text-sm"><span>Paid</span><span>{money(order.paid_amount)}</span></div>}

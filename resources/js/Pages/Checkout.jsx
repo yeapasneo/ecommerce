@@ -81,10 +81,10 @@ function PhoneVerify({ phone, verified, onVerified }) {
     );
 }
 
-export default function Checkout({ cart, paymentMethods, deliveryMethods, defaults, initialDelivery = 0, otp = { required: false, verified: [] } }) {
+export default function Checkout({ cart, paymentMethods, deliveryMethods, defaults, initialDelivery = 0, otp = { required: false, verified: [] }, loyalty = null }) {
     const [verifiedPhones, setVerifiedPhones] = useState(otp.verified ?? []);
-    const { errors: pageErrors } = usePage().props;
-    const form = useForm({ ...defaults, notes: '', delivery_method: 'home_delivery', payment_method: Object.keys(paymentMethods)[0] ?? 'cod', agree: false });
+    const { errors: pageErrors, auth } = usePage().props;
+    const form = useForm({ ...defaults, notes: '', delivery_method: 'home_delivery', payment_method: Object.keys(paymentMethods)[0] ?? 'cod', agree: false, use_points: false });
     const [delivery, setDelivery] = useState(initialDelivery);
 
     useEffect(() => {
@@ -115,7 +115,9 @@ export default function Checkout({ cart, paymentMethods, deliveryMethods, defaul
         e.preventDefault();
         form.post('/checkout', { preserveScroll: true });
     };
-    const total = cart.subtotal - cart.discount + delivery;
+    const pointsOff = form.data.use_points && loyalty?.redeemable ? loyalty.redeemable * loyalty.value : 0;
+    const total = cart.subtotal - cart.discount - pointsOff + delivery;
+    const willEarn = loyalty ? Math.floor((cart.subtotal - cart.discount - pointsOff) / loyalty.earnPer) : 0;
     const set = (k) => (e) => form.setData(k, e.target.value);
 
     return (
@@ -180,7 +182,21 @@ export default function Checkout({ cart, paymentMethods, deliveryMethods, defaul
                             <div className="flex justify-between"><span>{t('Sub-Total')}</span><span>{money(cart.subtotal)}</span></div>
                             <div className="flex justify-between"><span>{t('Delivery Charge')}</span><span>{delivery ? money(delivery) : 'Free'}</span></div>
                             {cart.discount > 0 && <div className="flex justify-between text-green-700"><span>{t('Discount')}</span><span>-{money(cart.discount)}</span></div>}
+                            {pointsOff > 0 && <div className="flex justify-between text-green-700"><span>{t('Points used')}</span><span>-{money(pointsOff)}</span></div>}
                             <div className="flex justify-between pt-2 text-base font-bold"><span>{t('Total')}</span><span className="text-accent-600">{money(total)}</span></div>
+                            {loyalty && (
+                                <div className="mt-2 rounded-md bg-brand-50 p-2 text-xs text-brand-700">
+                                    {loyalty.redeemable > 0 ? (
+                                        <label className="flex cursor-pointer items-start gap-2">
+                                            <input type="checkbox" className="mt-0.5 accent-brand-700" checked={form.data.use_points} onChange={(e) => form.setData('use_points', e.target.checked)} />
+                                            <span>{t('Use')} <b>{loyalty.redeemable}</b> {t('of your')} {loyalty.balance} {t('points')} (−{money(loyalty.redeemable * loyalty.value)})</span>
+                                        </label>
+                                    ) : auth?.user && loyalty.balance > 0 ? (
+                                        <span>{t('You have')} {loyalty.balance} {t('points. You can use them from')} {loyalty.min}.</span>
+                                    ) : null}
+                                    {willEarn > 0 && <p className={loyalty.redeemable > 0 || loyalty.balance > 0 ? 'mt-1' : ''}>{auth?.user ? t('You will earn') : t('Log in to earn')} <b>{willEarn}</b> {t('points on this order.')}</p>}
+                                </div>
+                            )}
                         </div>
                         <label className="mt-4 flex items-start gap-2 text-sm">
                             <input type="checkbox" className="mt-1 accent-brand-700" checked={form.data.agree} onChange={(e) => form.setData('agree', e.target.checked)} />

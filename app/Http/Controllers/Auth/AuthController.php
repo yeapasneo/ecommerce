@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\Setting;
 use App\Models\User;
 use App\Services\CartService;
 use Illuminate\Auth\Events\PasswordReset;
@@ -59,7 +60,10 @@ class AuthController extends Controller
         ]);
 
         $oldSession = $request->session()->getId();
-        $user = User::create($data);
+        // Invited with a referral link (?ref=CODE, remembered in a cookie)?
+        $code = strtoupper((string) $request->cookie('ref'));
+        $referrer = $code !== '' && Setting::enabled('referral_enabled') ? User::where('referral_code', $code)->first() : null;
+        $user = User::create($data + ['referred_by' => $referrer?->id]);
         Auth::login($user);
         $cart->mergeGuestCart($oldSession, $user->id);
         $request->session()->regenerate();

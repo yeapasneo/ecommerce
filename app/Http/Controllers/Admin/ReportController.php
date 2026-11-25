@@ -62,7 +62,7 @@ class ReportController extends Controller
 
     protected function totals(Carbon $from, Carbon $to): array
     {
-        $row = $this->sales($from, $to)->toBase()->selectRaw('count(*) as orders, coalesce(sum(total),0) as revenue, coalesce(sum(discount),0) as discount,
+        $row = $this->sales($from, $to)->toBase()->selectRaw('count(*) as orders, coalesce(sum(total),0) as revenue, coalesce(sum(discount + points_discount),0) as discount,
             coalesce(sum(tax),0) as tax, coalesce(sum(delivery_charge),0) as delivery, coalesce(sum(paid_amount),0) as collected,
             count(distinct right(regexp_replace(phone, \'[^0-9]\', \'\', \'g\'), 10)) as customers')->first();
         $items = (int) DB::table('order_items')->join('orders', 'orders.id', '=', 'order_items.order_id')

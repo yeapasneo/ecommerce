@@ -119,6 +119,7 @@ Route::middleware('auth')->prefix('account')->name('account.')->controller(Accou
     Route::get('/wishlist', 'wishlist')->name('wishlist');
     Route::post('/wishlist', 'toggleWishlist')->name('wishlist.toggle');
     Route::get('/saved-pcs', 'savedPcs')->name('saved-pcs');
+    Route::get('/points', 'points')->name('points');
 });
 Route::middleware('auth')->prefix('account')->name('account.')->controller(ReturnController::class)->group(function () {
     Route::get('/returns', 'index')->name('returns');
@@ -159,6 +160,7 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
         Route::post('orders/{order}/returns', [Admin\ReturnController::class, 'store'])->name('returns.store');
         Route::put('orders/{order}/items/{item}/serials', [Admin\ReturnController::class, 'serials'])->name('orders.serials');
         Route::get('warranty', [Admin\ReturnController::class, 'warranty'])->name('warranty');
+        Route::post('customers/{user}/points', [Admin\CustomerController::class, 'points'])->name('customers.points');
         Route::post('abandoned-carts/{checkout}/remind', [Admin\AbandonedCartController::class, 'remind'])->name('abandoned-carts.remind');
         Route::delete('abandoned-carts/{checkout}', [Admin\AbandonedCartController::class, 'destroy'])->name('abandoned-carts.destroy');
     });

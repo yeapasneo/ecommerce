@@ -229,6 +229,26 @@ export default function Settings({ values, secretsSet, gateways, couriers, notif
                             </div>
                         </Panel>
                         <div className="space-y-6">
+                            <Panel title="Loyalty Points & Referrals" icon="gift">
+                                <div className="space-y-4">
+                                    {toggle('loyalty_enabled', 'Loyalty points', 'Customers earn points when an order is delivered and use them at checkout.')}
+                                    {flag(form.data.loyalty_enabled) && (
+                                        <div className="grid grid-cols-2 gap-3">
+                                            {text('loyalty_earn_per', '1 point per (৳ spent)', { type: 'number', min: 1 })}
+                                            {text('loyalty_point_value', '1 point is worth (৳)', { type: 'number', min: 0.01, step: '0.01' })}
+                                            {text('loyalty_min_redeem', 'Use from (points)', { type: 'number', min: 0 })}
+                                            {text('loyalty_max_percent', 'Pay at most (% of items)', { type: 'number', min: 1, max: 100 })}
+                                        </div>
+                                    )}
+                                    {toggle('referral_enabled', 'Referral links', 'Each customer gets a link to share. When an invited friend’s first order is delivered, both get points.')}
+                                    {flag(form.data.referral_enabled) && (
+                                        <div className="grid grid-cols-2 gap-3">
+                                            {text('referral_bonus', 'Points for the inviter', { type: 'number', min: 0 })}
+                                            {text('referral_welcome', 'Points for the new customer', { type: 'number', min: 0 })}
+                                        </div>
+                                    )}
+                                </div>
+                            </Panel>
                             <Panel title="Low Stock" icon="box">
                                 <div className="space-y-4">
                                     {text('low_stock_threshold', 'Low stock at or below', { type: 'number', min: 0, hint: 'Products with this many units or fewer show in Inventory → Low stock.' })}

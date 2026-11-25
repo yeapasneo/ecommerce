@@ -160,6 +160,7 @@ class Returns
             }
             $refunded = (float) $order->refunded_amount + $amount;
             $order->update(['refunded_amount' => $refunded] + ($refunded >= (float) $order->paid_amount ? ['payment_status' => 'refunded'] : []));
+            app(Loyalty::class)->refunded($order, $amount);
             $order->histories()->create(['status' => $order->status, 'comment' => 'Refunded ৳'.number_format($amount, 2).' by '.(ReturnRequest::REFUND_METHODS[$method] ?? $method)." ({$r->number})."]);
             $this->move($r, 'refunded', $note, $staffId, [
                 'refund_amount' => $r->refund_amount + $amount, 'refund_method' => $method, 'refund_reference' => $reference, 'refunded_at' => now(), 'resolution' => 'refund',

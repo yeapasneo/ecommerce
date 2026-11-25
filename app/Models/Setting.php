@@ -104,6 +104,16 @@ class Setting extends Model
         'sms_template_back_in_stock' => '{product} is back in stock at {site}. Order now: {link}',
         'sms_template_price_drop' => 'Hi {name}, {product} on your wishlist is now Tk {price} (was Tk {old}) at {site}: {link}',
 
+        // Loyalty points and referrals
+        'loyalty_enabled' => '0',
+        'loyalty_earn_per' => '100', // spend this many Taka to earn 1 point
+        'loyalty_point_value' => '1', // 1 point = this many Taka off
+        'loyalty_min_redeem' => '100',
+        'loyalty_max_percent' => '20', // points can pay at most this share of the items
+        'referral_enabled' => '0',
+        'referral_bonus' => '200', // points for the person who invited
+        'referral_welcome' => '100', // points for the new customer
+
         // Inventory
         'low_stock_threshold' => '3',
         'low_stock_alerts' => '0',
@@ -183,6 +193,7 @@ class Setting extends Model
         'site_name', 'tagline', 'phone', 'email', 'address', 'notice',
         'delivery_charge_inside', 'delivery_charge_outside', 'express_delivery_charge', 'free_delivery_over',
         'facebook', 'youtube', 'instagram',
+        'loyalty_enabled', 'loyalty_earn_per', 'loyalty_point_value', 'referral_enabled', 'referral_welcome',
     ];
 
     public static function all_settings(): array

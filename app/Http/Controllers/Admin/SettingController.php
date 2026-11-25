@@ -71,7 +71,7 @@ class SettingController extends Controller
     public function update(Request $request, PaymentManager $payments, CourierManager $couriers)
     {
         $flags = ['seo_noindex', 'cod_enabled', 'bkash_enabled', 'bkash_sandbox', 'nagad_enabled', 'nagad_sandbox', 'sslcommerz_enabled', 'sslcommerz_sandbox', 'eps_enabled', 'eps_sandbox',
-            'courier_sync_status', 'steadfast_enabled', 'pathao_enabled', 'pathao_sandbox', 'checkout_otp', 'emi_enabled', 'abandoned_cart_enabled', 'ai_chat_enabled', 'ai_writer_auto', 'low_stock_alerts', 'returns_enabled', 'notify_returns', 'back_in_stock_enabled', 'price_drop_alerts',
+            'courier_sync_status', 'steadfast_enabled', 'pathao_enabled', 'pathao_sandbox', 'checkout_otp', 'emi_enabled', 'abandoned_cart_enabled', 'ai_chat_enabled', 'ai_writer_auto', 'low_stock_alerts', 'returns_enabled', 'notify_returns', 'back_in_stock_enabled', 'price_drop_alerts', 'loyalty_enabled', 'referral_enabled',
             ...collect(OrderNotifier::EVENTS)->keys()->flatMap(fn ($e) => ["notify_sms_{$e}", "notify_email_{$e}"])->all()];
         $rules = collect(Setting::DEFAULTS)->map(fn () => ['nullable', 'string', 'max:1000'])->all();
         foreach (['delivery_charge_inside', 'delivery_charge_outside', 'express_delivery_charge', 'free_delivery_over'] as $k) {
@@ -112,6 +112,12 @@ class SettingController extends Controller
         $rules['steadfast_webhook_token'] = ['nullable', 'string', 'min:16', 'max:100'];
         $rules['pathao_webhook_secret'] = ['nullable', 'string', 'min:16', 'max:100'];
         $rules['seo_og_image_remove'] = ['nullable', 'boolean'];
+        $rules['loyalty_earn_per'] = ['nullable', 'numeric', 'min:1'];
+        $rules['loyalty_point_value'] = ['nullable', 'numeric', 'min:0.01'];
+        $rules['loyalty_min_redeem'] = ['nullable', 'integer', 'min:0'];
+        $rules['loyalty_max_percent'] = ['nullable', 'integer', 'between:1,100'];
+        $rules['referral_bonus'] = ['nullable', 'integer', 'min:0', 'max:100000'];
+        $rules['referral_welcome'] = ['nullable', 'integer', 'min:0', 'max:100000'];
         $rules['return_days'] = ['nullable', 'integer', 'min:0', 'max:365'];
         $rules['low_stock_threshold'] = ['nullable', 'integer', 'min:0', 'max:1000'];
         $rules['low_stock_email'] = ['nullable', 'email', 'max:255'];

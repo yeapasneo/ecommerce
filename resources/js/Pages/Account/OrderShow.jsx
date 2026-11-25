@@ -54,6 +54,8 @@ export default function OrderShow({ order, paymentMethods, deliveryMethods, canR
                     <div className="flex justify-between"><span>{t('Sub-Total')}</span><span>{money(order.subtotal)}</span></div>
                     <div className="flex justify-between"><span>{t('Delivery')}</span><span>{money(order.delivery_charge)}</span></div>
                     {order.discount > 0 && <div className="flex justify-between text-green-700"><span>{t('Discount')}</span><span>-{money(order.discount)}</span></div>}
+                    {order.points_discount > 0 && <div className="flex justify-between text-green-700"><span>{t('Points used')}</span><span>-{money(order.points_discount)}</span></div>}
+                    {order.points_earned > 0 && <div className="flex justify-between text-xs text-brand-700"><span>{t('Points earned')}</span><span>+{order.points_earned}</span></div>}
                     {order.tax > 0 && <div className="flex justify-between"><span>{t('VAT / Tax')}</span><span>{money(order.tax)}</span></div>}
                     <div className="flex justify-between font-bold"><span>{t('Total')}</span><span className="text-accent-600">{money(order.total)}</span></div>
                     {order.payment_status === 'partial' && <div className="flex justify-between text-sm"><span>{t('Paid')}</span><span>{money(order.paid_amount)}</span></div>}

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\CaptureReferral;
 use App\Http\Middleware\EnsureUserIsActive;
 use App\Http\Middleware\EnsureUserIsAdmin;
 use App\Http\Middleware\HandleInertiaRequests;
@@ -25,6 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->web(append: [
             SetLocale::class,
+            CaptureReferral::class,
             HandleInertiaRequests::class,
             EnsureUserIsActive::class,
         ]);

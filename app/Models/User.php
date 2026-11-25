@@ -7,13 +7,14 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Str;
 
 class User extends Authenticatable
 {
     use HasFactory, Notifiable;
     use LogsActivity;
 
-    protected $fillable = ['name', 'email', 'phone', 'address', 'city', 'password', 'is_admin', 'is_active', 'role'];
+    protected $fillable = ['name', 'email', 'phone', 'address', 'city', 'password', 'is_admin', 'is_active', 'role', 'referred_by'];
 
     /** Admin permissions; each one opens a part of the admin panel. */
     public const PERMISSIONS = [
@@ -55,6 +56,24 @@ class User extends Authenticatable
     }
 
     protected $hidden = ['password', 'remember_token'];
+
+    public function pointTransactions(): HasMany
+    {
+        return $this->hasMany(PointTransaction::class)->latest('id');
+    }
+
+    /** Created the first time it's needed. */
+    public function referralCode(): string
+    {
+        if (! $this->referral_code) {
+            do {
+                $code = strtoupper(Str::random(7));
+            } while (static::where('referral_code', $code)->exists() || preg_match('/[O0I1L]/', $code));
+            $this->forceFill(['referral_code' => $code])->saveQuietly();
+        }
+
+        return $this->referral_code;
+    }
 
     protected function casts(): array
     {

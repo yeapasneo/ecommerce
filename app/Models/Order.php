@@ -37,7 +37,7 @@ class Order extends Model
     protected $fillable = [
         'order_number', 'user_id', 'first_name', 'last_name', 'email', 'phone', 'address', 'city', 'notes',
         'delivery_method', 'payment_method', 'payment_status', 'status', 'subtotal', 'delivery_charge', 'discount', 'total', 'coupon_code',
-        'gateway_ref', 'transaction_id', 'paid_at', 'source', 'tax', 'paid_amount', 'refunded_amount',
+        'gateway_ref', 'transaction_id', 'paid_at', 'source', 'tax', 'paid_amount', 'refunded_amount', 'points_redeemed', 'points_discount', 'points_earned',
         'courier', 'courier_consignment_id', 'courier_tracking_code', 'courier_status', 'courier_fee', 'courier_cod', 'courier_sent_at', 'courier_status_at',
     ];
 
@@ -49,6 +49,7 @@ class Order extends Model
         'tax' => 'float',
         'paid_amount' => 'float',
         'refunded_amount' => 'float',
+        'points_discount' => 'float',
         'paid_at' => 'datetime',
         'courier_fee' => 'float',
         'courier_cod' => 'float',
