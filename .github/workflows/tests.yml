@@ -1,8 +1,10 @@
 name: Tests
 
+# Runs only when started by hand: GitHub → Actions → Tests → "Run workflow".
+# (The suite is run locally before each push during development.)
+# To run it on every push again, add:  push:  and  pull_request:  below.
 on:
-  push:
-  pull_request:
+  workflow_dispatch:
 
 # A newer push to the same branch cancels the run still going.
 concurrency:

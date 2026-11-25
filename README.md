@@ -188,7 +188,7 @@ Deployment steps, Nginx and Supervisor configs are in **[DEPLOY.md](DEPLOY.md)**
 
 ## Tests
 
-GitHub Actions runs Pint and the whole suite (PostgreSQL 16 and Redis) on every push: `.github/workflows/tests.yml`.
+GitHub Actions can run Pint and the whole suite (PostgreSQL 16 and Redis): open the repository on GitHub → **Actions → Tests → Run workflow**. It runs only when started by hand (`.github/workflows/tests.yml`); add `push:` to its `on:` list to run it on every push.
 
 The feature tests run against a PostgreSQL database named `ecommerce_test` (see `phpunit.xml`):
 
