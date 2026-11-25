@@ -14,6 +14,7 @@ use App\Models\Setting;
 use App\Services\CartService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Inertia\Inertia;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -39,12 +40,15 @@ class HandleInertiaRequests extends Middleware
             'aiReady' => fn () => $request->is('admin*') && $request->user()?->is_admin && app(AiClient::class)->isConfigured(),
             'assistant' => fn () => ! $request->is('admin*') && ShopAssistant::enabled()
                 ? ['name' => ShopAssistant::name(), 'greeting' => Setting::get('ai_chat_greeting')] : null,
-            'translations' => fn () => app()->getLocale() !== 'en' && ! $request->is('admin*')
-                ? Cache::rememberForever('translations:'.app()->getLocale().':'.@filemtime(lang_path(app()->getLocale().'.json')), fn () => json_decode((string) @file_get_contents(lang_path(app()->getLocale().'.json')), true) ?: [])
-                : [],
+            // Bangla texts: sent once (switching language reloads the whole page).
+            'translations' => app()->getLocale() === 'en' || $request->is('admin*') ? [] : Inertia::once(
+                fn () => Cache::rememberForever('translations:'.app()->getLocale().':'.@filemtime(lang_path(app()->getLocale().'.json')), fn () => json_decode((string) @file_get_contents(lang_path(app()->getLocale().'.json')), true) ?: []),
+            )->as('translations-'.app()->getLocale()),
             'seo' => fn () => $request->is('admin*') ? null : seo()->toArray(),
             'analytics' => fn () => $request->is('admin*') ? [] : analytics()->pull(),
-            'menu' => fn () => $request->is('admin*') ? [] : Cache::remember('category_menu', 600, fn () => Category::menuTree()),
+            // ~30 KB that rarely changes: sent on the first page load only, then kept by the browser
+            // across page changes (refreshed after an hour, or on the next full page load).
+            'menu' => $request->is('admin*') ? [] : Inertia::once(fn () => Cache::remember('category_menu', 600, fn () => Category::menuTree()))->until(3600),
             'cartCount' => fn () => app(CartService::class)->count(),
             'compareCount' => fn () => count(session('compare', [])),
             // Sidebar badges in the admin panel.

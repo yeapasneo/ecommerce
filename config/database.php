@@ -97,6 +97,8 @@ return [
             'prefix_indexes' => true,
             'search_path' => 'public',
             'sslmode' => env('DB_SSLMODE', 'prefer'),
+            // Keep connections open between requests (saves ~10 ms per page with php-fpm). Off by default.
+            'options' => extension_loaded('pdo_pgsql') ? array_filter([PDO::ATTR_PERSISTENT => (bool) env('DB_PERSISTENT', false)]) : [],
         ],
 
         'sqlsrv' => [

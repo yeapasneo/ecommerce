@@ -45,7 +45,19 @@
         @endif
 
         @viteReactRefresh
-        @vite(['resources/css/app.css', 'resources/js/app.jsx'])
+        @php
+            // The biggest image on the page starts downloading with the HTML instead of after the app has drawn the page.
+            $heroImage = match ($page['component'] ?? null) {
+                'Product/Show' => $page['props']['product']['image_url'] ?? null,
+                'Home' => collect($page['props']['sliders'] ?? [])->first()['image_url'] ?? null,
+                default => null,
+            };
+        @endphp
+        @if ($heroImage)
+            <link rel="preload" as="image" href="{{ $heroImage }}" fetchpriority="high">
+        @endif
+        {{-- The current page's code is preloaded too, so it downloads in parallel with the app instead of after it. --}}
+        @vite(['resources/css/app.css', 'resources/js/app.jsx', "resources/js/Pages/{$page['component']}.jsx"])
         @inertiaHead
     </head>
     <body class="antialiased">

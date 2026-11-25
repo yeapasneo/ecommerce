@@ -17,13 +17,13 @@ function Gallery({ product }) {
     return (
         <div>
             <div className="card flex aspect-square items-center justify-center overflow-hidden p-4">
-                {images.length ? <img src={images[active]} alt={product.name} className="max-h-full rounded object-contain" /> : <Icon name="image" className="h-24 w-24 text-slate-300" />}
+                {images.length ? <img src={images[active]} alt={product.name} className="max-h-full rounded object-contain" width={500} height={500} fetchPriority={active === 0 ? 'high' : 'auto'} /> : <Icon name="image" className="h-24 w-24 text-slate-300" />}
             </div>
             {images.length > 1 && (
                 <div className="mt-3 flex gap-2 overflow-x-auto">
                     {images.map((src, i) => (
                         <button key={i} onClick={() => setActive(i)} className={`h-16 w-16 shrink-0 overflow-hidden rounded border-2 ${i === active ? 'border-accent-500' : 'border-transparent'}`}>
-                            <img src={src} alt="" className="h-full w-full object-cover" />
+                            <img src={src} alt="" className="h-full w-full object-cover" loading="lazy" decoding="async" />
                         </button>
                     ))}
                 </div>
@@ -325,7 +325,7 @@ export default function Show({ product, breadcrumbs, specGroups, reviews, rating
                     <div className="space-y-3">
                         {related.map((p) => (
                             <Link key={p.id} href={`/product/${p.slug}`} className="card flex gap-3 p-3 hover:shadow-md">
-                                <img src={p.image_url} alt="" className="h-16 w-16 rounded object-cover" />
+                                <img src={p.image_url} alt="" className="h-16 w-16 rounded object-cover" loading="lazy" decoding="async" />
                                 <div className="min-w-0">
                                     <p className="line-clamp-2 text-sm">{p.name}</p>
                                     <p className="text-sm font-semibold text-accent-600">{money(p.price)}</p>

@@ -21,15 +21,15 @@ export default function ProductCard({ product, action }) {
             {product.flash_ends_at && (
                 <span className="absolute right-2 top-3 z-10 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">{t('Flash sale')}</span>
             )}
-            <Link href={`/product/${product.slug}`} className="block aspect-square overflow-hidden border-b border-slate-100 bg-slate-50 p-3">
+            <Link href={`/product/${product.slug}`} prefetch={['hover', 'click']} cacheFor="1m" className="block aspect-square overflow-hidden border-b border-slate-100 bg-slate-50 p-3">
                 {product.image_url ? (
-                    <img src={product.image_url} alt={product.name} loading="lazy" className="h-full w-full rounded object-contain transition group-hover:scale-105" />
+                    <img src={product.image_url} alt={product.name} loading="lazy" decoding="async" width={500} height={500} className="h-full w-full rounded object-contain transition group-hover:scale-105" />
                 ) : (
                     <div className="flex h-full items-center justify-center text-slate-300"><Icon name="image" className="h-16 w-16" /></div>
                 )}
             </Link>
             <div className="flex flex-1 flex-col p-3">
-                <Link href={`/product/${product.slug}`} className="mb-2 line-clamp-2 text-sm font-medium text-slate-800 hover:text-accent-600 hover:underline">
+                <Link href={`/product/${product.slug}`} prefetch={['hover', 'click']} cacheFor="1m" className="mb-2 line-clamp-2 text-sm font-medium text-slate-800 hover:text-accent-600 hover:underline">
                     {product.name}
                 </Link>
                 {product.key_features?.length > 0 && (

@@ -18,10 +18,10 @@ function Slider({ slides }) {
     return (
         <div className="relative overflow-hidden rounded-lg">
             <div className="flex transition-transform duration-500" style={{ transform: `translateX(-${i * 100}%)` }}>
-                {slides.map((s) => (
+                {slides.map((s, n) => (
                     <Link key={s.id} href={s.link || '#'} className="block w-full shrink-0" style={{ background: s.bg_color }}>
                         {s.image_url ? (
-                            <img src={s.image_url} alt={s.title} className="aspect-[8/3] w-full object-cover" />
+                            <img src={s.image_url} alt={s.title} className="aspect-[8/3] w-full object-cover" {...(n === 0 ? { fetchPriority: 'high' } : { loading: 'lazy' })} decoding="async" />
                         ) : (
                             <div className="flex aspect-[8/3] flex-col justify-center p-8 text-white">
                                 <h2 className="text-2xl font-bold md:text-4xl">{s.title}</h2>
@@ -135,7 +135,7 @@ export default function Home({ sliders, sideBanners, featuredCategories, feature
                     <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6">
                         {brands.map((b) => (
                             <Link key={b.id} href={`/brand/${b.slug}`} className="card flex h-16 items-center justify-center p-3 text-sm font-bold text-slate-600 hover:text-accent-600">
-                                {b.logo_url ? <img src={b.logo_url} alt={b.name} className="max-h-10" /> : b.name}
+                                {b.logo_url ? <img src={b.logo_url} alt={b.name} className="max-h-10" loading="lazy" decoding="async" /> : b.name}
                             </Link>
                         ))}
                     </div>

@@ -13,7 +13,7 @@ export default function Brands({ brands }) {
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
                 {brands.map((b) => (
                     <Link key={b.id} href={`/brand/${b.slug}`} className="card flex flex-col items-center justify-center gap-1 p-5 text-center hover:shadow-md">
-                        {b.logo_url ? <img src={b.logo_url} alt={b.name} className="mb-1 max-h-10" /> : <span className="font-bold text-slate-700">{b.name}</span>}
+                        {b.logo_url ? <img src={b.logo_url} alt={b.name} className="mb-1 max-h-10" loading="lazy" decoding="async" /> : <span className="font-bold text-slate-700">{b.name}</span>}
                         <span className="text-xs text-slate-500">{b.products_count} products</span>
                     </Link>
                 ))}

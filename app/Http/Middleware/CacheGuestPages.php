@@ -8,6 +8,7 @@ use App\Services\CartService;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Vite;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -84,11 +85,13 @@ class CacheGuestPages
     {
         return 'page:'.Cache::get(self::VERSION_KEY, 1).':'.md5(implode('|', [
             $request->fullUrl(),
+            Vite::manifestHash(), // a new build/deploy changes the asset file names
             app()->getLocale(),
             $request->header('X-Inertia', ''),
             $request->header('X-Inertia-Version', ''),
             $request->header('X-Inertia-Partial-Data', ''),
             $request->header('X-Inertia-Partial-Component', ''),
+            $request->header('X-Inertia-Except-Once-Props', ''), // the menu is left out once the browser has it
             $request->header('Accept', ''),
         ]));
     }

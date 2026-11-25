@@ -18,6 +18,14 @@ class ProductSearch
         return mb_strtolower(trim(preg_replace('/\s+/', ' ', $term)));
     }
 
+    /** Name, SKU and model in one string; the products_search_trgm index covers exactly this expression. */
+    public const TEXT = "lower(products.name || ' ' || products.sku || ' ' || coalesce(products.model, ''))";
+
+    /**
+     * Every word must appear in the name, SKU or model ("logitec mouse" matches
+     * "Logitech G102 ... Mouse"). Only when nothing matches that way are typos
+     * forgiven ("smasung galaxy"), so normal searches stay fast and precise.
+     */
     public static function apply(Builder $query, string $term): Builder
     {
         $term = self::normalize($term);
@@ -25,25 +33,20 @@ class ProductSearch
             return $query;
         }
         $words = array_slice(explode(' ', $term), 0, 8);
-        $fuzzy = DB::getDriverName() === 'pgsql';
-        if ($fuzzy) {
-            // Lets "<%" use the trigram index (set for this connection only).
-            DB::statement('SET pg_trgm.word_similarity_threshold = '.self::THRESHOLD);
+        $exact = function ($q) use ($words) {
+            foreach ($words as $word) {
+                $q->whereRaw(self::TEXT.' like ?', ['%'.addcslashes($word, '%_\\').'%']);
+            }
+        };
+
+        if (DB::getDriverName() !== 'pgsql' || (clone $query)->where($exact)->exists()) {
+            return $query->where($exact);
         }
 
-        return $query->where(function ($q) use ($words, $term, $fuzzy) {
-            $q->where(function ($all) use ($words) {
-                foreach ($words as $word) {
-                    $like = '%'.addcslashes($word, '%_\\').'%';
-                    $all->where(fn ($w) => $w->whereRaw('lower(products.name) like ?', [$like])
-                        ->orWhereRaw('lower(products.sku) like ?', [$like])
-                        ->orWhereRaw("lower(coalesce(products.model, '')) like ?", [$like]));
-                }
-            });
-            if ($fuzzy) {
-                $q->orWhereRaw('? <% lower(products.name)', [$term]);
-            }
-        });
+        // No exact match: forgive typos (uses the trigram index on the name).
+        DB::statement('SET pg_trgm.word_similarity_threshold = '.self::THRESHOLD);
+
+        return $query->whereRaw('? <% lower(products.name)', [$term]);
     }
 
     /** Best matches first. */

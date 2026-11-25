@@ -59,7 +59,9 @@ class CategoryController extends Controller
         seo()->title('All Brands')->description('Browse every brand we sell, from laptops and components to phones and gadgets.');
 
         return Inertia::render('Catalog/Brands', [
-            'brands' => Brand::where('is_active', true)->withCount(['products' => fn ($q) => $q->where('is_active', true)])->orderBy('name')->get(),
+            // Only what the page shows (it lists ~600 brands).
+            'brands' => Brand::where('is_active', true)->withCount(['products' => fn ($q) => $q->where('is_active', true)])->orderBy('name')
+                ->get(['id', 'name', 'slug', 'logo'])->map(fn ($b) => ['id' => $b->id, 'name' => $b->name, 'slug' => $b->slug, 'logo_url' => $b->logo_url, 'products_count' => $b->products_count]),
         ]);
     }
 
